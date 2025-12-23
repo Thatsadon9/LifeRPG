@@ -1,0 +1,4322 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>🎮 Life Quest: Ultimate Pixel RPG</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="shortcut icon" href="./favicon.jpg" type="image/x-icon">
+
+    <!-- Firebase (compat build for simple inline usage) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+      :root {
+        --bg-dark: #1a1d2e;
+        --bg-light: #2d3250;
+        --ui-panel: #424769;
+        --ui-border: #f9b17a;
+        --accent: #ff6b9d;
+        --accent-light: #ffc2d1;
+        --text-main: #fef9f2;
+        --text-shadow: #2d3250;
+        --success: #9dde8b;
+        --warning: #ffb84c;
+        --danger: #ff6b6b;
+        --hp-color: #ff6b9d;
+        --exp-color: #ffd93d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Press Start 2P", cursive;
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: var(--text-main);
+        overflow-x: hidden;
+        overflow-y: auto;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        position: relative;
+        padding: 5px;
+      }
+
+      @media (min-width: 768px) {
+        body {
+          align-items: center;
+          padding: 10px;
+        }
+      }
+
+      /* Animated Background Stars */
+      body::before {
+        content: "";
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-image: radial-gradient(
+            2px 2px at 20% 30%,
+            white,
+            transparent
+          ),
+          radial-gradient(2px 2px at 60% 70%, white, transparent),
+          radial-gradient(1px 1px at 50% 50%, white, transparent),
+          radial-gradient(1px 1px at 80% 10%, white, transparent),
+          radial-gradient(2px 2px at 90% 60%, white, transparent),
+          radial-gradient(1px 1px at 33% 90%, white, transparent);
+        background-size: 200% 200%;
+        animation: twinkle 8s ease-in-out infinite;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      @keyframes twinkle {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+
+      /* === UI LAYER === */
+      #ui-layer {
+        position: relative;
+        width: 100%;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        z-index: 10;
+        transition: opacity 0.5s, transform 0.5s;
+        padding-top: 10px;
+        padding-bottom: 20px;
+      }
+
+      @media (min-width: 768px) {
+        #ui-layer {
+          position: absolute;
+          height: 100%;
+          min-height: auto;
+          align-items: center;
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+      }
+
+      .dashboard {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 100%;
+        width: 100%;
+        filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
+      }
+
+      @media (min-width: 768px) {
+        .dashboard {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          max-width: 95%;
+        }
+      }
+
+      @media (min-width: 900px) {
+        .dashboard {
+          grid-template-columns: 380px 450px;
+          max-width: 900px;
+          gap: 25px;
+        }
+      }
+
+      .panel {
+        background: linear-gradient(135deg, #424769 0%, #2d3250 100%);
+        border: 4px solid var(--ui-border);
+        border-radius: 12px;
+        box-shadow: 0 6px 0 #2d3250, 0 10px 15px rgba(0, 0, 0, 0.4);
+        padding: 12px;
+        position: relative;
+        animation: none;
+      }
+
+      @media (min-width: 768px) {
+        .panel {
+          border: 5px solid var(--ui-border);
+          border-radius: 15px;
+          box-shadow: 0 8px 0 #2d3250, 0 12px 20px rgba(0, 0, 0, 0.4);
+          padding: 25px;
+          animation: panelFloat 3s ease-in-out infinite;
+        }
+      }
+
+      .panel:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      .panel:nth-child(2) {
+        animation-delay: 0.5s;
+      }
+
+      @keyframes panelFloat {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      /* Decorative Corners */
+      .panel::before,
+      .panel::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: var(--accent);
+        border: 3px solid var(--ui-border);
+      }
+
+      .panel::before {
+        top: -5px;
+        left: -5px;
+        border-radius: 5px 0 0 0;
+      }
+
+      .panel::after {
+        bottom: -5px;
+        right: -5px;
+        border-radius: 0 0 5px 0;
+      }
+
+      h1,
+      h2 {
+        color: var(--accent-light);
+        margin-top: 0;
+        text-shadow: 3px 3px 0 var(--text-shadow),
+          -1px -1px 0 var(--text-shadow);
+        letter-spacing: 2px;
+      }
+
+      h1 {
+        font-size: 12px;
+        text-align: center;
+        margin-bottom: 12px;
+        animation: glow 2s ease-in-out infinite;
+        line-height: 1.4;
+      }
+
+      @media (min-width: 768px) {
+        h1 {
+          font-size: 24px;
+          margin-bottom: 25px;
+        }
+      }
+
+      @keyframes glow {
+        0%,
+        100% {
+          text-shadow: 3px 3px 0 var(--text-shadow),
+            -1px -1px 0 var(--text-shadow), 0 0 20px rgba(255, 107, 157, 0.5);
+        }
+        50% {
+          text-shadow: 3px 3px 0 var(--text-shadow),
+            -1px -1px 0 var(--text-shadow), 0 0 30px rgba(255, 107, 157, 0.8);
+        }
+      }
+
+      h2 {
+        font-size: 10px;
+        border-bottom: 2px dashed var(--ui-border);
+        padding-bottom: 6px;
+        margin-bottom: 8px;
+      }
+
+      @media (min-width: 768px) {
+        h2 {
+          font-size: 14px;
+          border-bottom: 3px dashed var(--ui-border);
+          padding-bottom: 12px;
+          margin-bottom: 15px;
+        }
+      }
+
+      /* Hero Avatar Box */
+      .hero-avatar {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, var(--accent) 0%, #ff8fab 100%);
+        margin: 0 auto 10px;
+        box-shadow: 0 4px 0 #2d3250, 0 6px 10px rgba(0, 0, 0, 0.3);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        border: 2px solid var(--ui-border);
+        border-radius: 8px;
+        position: relative;
+        animation: none;
+      }
+
+      @media (min-width: 768px) {
+        .hero-avatar {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 20px;
+          font-size: 14px;
+          border: 4px solid var(--ui-border);
+          border-radius: 10px;
+          box-shadow: 0 5px 0 #2d3250, 0 8px 15px rgba(0, 0, 0, 0.3);
+          animation: bounce 2s ease-in-out infinite;
+        }
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        50% {
+          transform: translateY(-5px) scale(1.05);
+        }
+      }
+
+      /* Sparkles around avatar */
+      .hero-avatar::before {
+        content: "✨";
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        font-size: 20px;
+        animation: sparkle 1.5s ease-in-out infinite;
+      }
+
+      .hero-avatar::after {
+        content: "✨";
+        position: absolute;
+        bottom: -10px;
+        left: -10px;
+        font-size: 20px;
+        animation: sparkle 1.5s ease-in-out infinite 0.7s;
+      }
+
+      @keyframes sparkle {
+        0%,
+        100% {
+          opacity: 0;
+          transform: scale(0.5);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.2);
+        }
+      }
+
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 8px;
+        padding: 5px 8px;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 6px;
+        border-left: 3px solid var(--accent);
+        transition: all 0.3s;
+      }
+
+      @media (min-width: 768px) {
+        .stat-row {
+          margin-bottom: 12px;
+          font-size: 12px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          border-left: 4px solid var(--accent);
+        }
+      }
+
+      .stat-row:hover {
+        background: rgba(255, 107, 157, 0.2);
+        transform: translateX(5px);
+        border-left-color: var(--accent-light);
+      }
+
+      .stat-row span:last-child {
+        color: var(--exp-color);
+        font-weight: bold;
+      }
+
+      /* Quest Categories */
+      .quest-category {
+        margin-bottom: 15px;
+      }
+
+      @media (min-width: 768px) {
+        .quest-category {
+          margin-bottom: 20px;
+        }
+      }
+
+      .quest-category h3 {
+        font-size: 9px;
+        color: var(--accent-light);
+        margin: 8px 0;
+        padding: 6px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        border-left: 3px solid var(--accent);
+      }
+
+      @media (min-width: 768px) {
+        .quest-category h3 {
+          font-size: 11px;
+          margin: 10px 0;
+          padding: 8px;
+          border-radius: 5px;
+        }
+      }
+
+      .btn-completed {
+        opacity: 0.5;
+        cursor: not-allowed !important;
+        background: linear-gradient(
+          135deg,
+          #2c3e50 0%,
+          #34495e 100%
+        ) !important;
+      }
+
+      .btn-completed:hover {
+        transform: none !important;
+      }
+
+      .quest-scroll {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+      }
+
+      @media (min-width: 768px) {
+        .quest-scroll {
+          max-height: 400px;
+          overflow-y: auto;
+          padding-right: 10px;
+        }
+      }
+
+      /* Custom quest actions */
+      .custom-quest-row {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      @media (min-width: 500px) {
+        .custom-quest-row {
+          flex-direction: row;
+          gap: 8px;
+          align-items: stretch;
+        }
+      }
+
+      .quest-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 6px;
+        width: 100%;
+      }
+
+      @media (min-width: 500px) {
+        .quest-actions {
+          flex-direction: column;
+          min-width: 70px;
+          width: auto;
+        }
+      }
+
+      .quest-action-btn {
+        border: 2px solid var(--ui-border);
+        border-radius: 6px;
+        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 9px;
+        padding: 8px 10px;
+        cursor: pointer;
+        box-shadow: 0 2px 0 #2d3250, 0 4px 6px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s;
+        flex: 1;
+      }
+
+      @media (min-width: 500px) {
+        .quest-action-btn {
+          flex: none;
+          font-size: 10px;
+          border-radius: 8px;
+          box-shadow: 0 3px 0 #2d3250, 0 5px 8px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      .quest-action-btn:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent-light);
+      }
+
+      .quest-action-btn.danger {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        border-color: #ffb3b3;
+      }
+
+      .quest-scroll::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .quest-scroll::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+      }
+
+      .quest-scroll::-webkit-scrollbar-thumb {
+        background: var(--accent);
+        border-radius: 10px;
+      }
+
+      .gold-display {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 8px 0;
+        padding: 6px;
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        border: 2px solid var(--ui-border);
+        border-radius: 6px;
+        font-size: 9px;
+        box-shadow: 0 2px 0 #c0392b, 0 3px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      @media (min-width: 768px) {
+        .gold-display {
+          gap: 10px;
+          margin: 15px 0;
+          padding: 10px;
+          border: 3px solid var(--ui-border);
+          border-radius: 10px;
+          font-size: 14px;
+          box-shadow: 0 4px 0 #c0392b, 0 6px 10px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      .streak-display {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 8px 0;
+        padding: 6px;
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        border: 2px solid var(--ui-border);
+        border-radius: 6px;
+        font-size: 9px;
+        box-shadow: 0 2px 0 #922b21, 0 3px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      @media (min-width: 768px) {
+        .streak-display {
+          gap: 10px;
+          margin: 15px 0;
+          padding: 10px;
+          border: 3px solid var(--ui-border);
+          border-radius: 10px;
+          font-size: 14px;
+          box-shadow: 0 4px 0 #922b21, 0 6px 10px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      .action-btn-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      @media (min-width: 768px) {
+        .action-btn-group {
+          gap: 10px;
+          margin-top: 15px;
+        }
+      }
+
+      .btn-small {
+        padding: 8px;
+        font-size: 8px;
+      }
+
+      @media (min-width: 768px) {
+        .btn-small {
+          padding: 10px;
+          font-size: 9px;
+        }
+      }
+
+      /* === MODAL SYSTEM === */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .modal-overlay.active {
+        display: flex;
+      }
+
+      .modal-content {
+        background: linear-gradient(135deg, #424769 0%, #2d3250 100%);
+        border: 3px solid var(--ui-border);
+        border-radius: 10px;
+        padding: 12px;
+        max-width: 95%;
+        width: 95vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 6px 0 #2d3250, 0 10px 20px rgba(0, 0, 0, 0.5);
+        animation: modalPop 0.3s ease-out;
+        position: relative;
+      }
+
+      @media (min-width: 768px) {
+        .modal-content {
+          border: 5px solid var(--ui-border);
+          border-radius: 15px;
+          padding: 30px;
+          max-width: 600px;
+          width: auto;
+          max-height: 80vh;
+          box-shadow: 0 10px 0 #2d3250, 0 15px 30px rgba(0, 0, 0, 0.5);
+        }
+      }
+
+      @keyframes modalPop {
+        0% {
+          transform: scale(0.8) translateY(-50px);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1) translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 3px dashed var(--ui-border);
+      }
+
+      .modal-title {
+        font-size: 12px;
+        color: var(--accent-light);
+        text-shadow: 2px 2px 0 var(--text-shadow);
+      }
+
+      @media (min-width: 768px) {
+        .modal-title {
+          font-size: 18px;
+        }
+      }
+
+      .modal-close {
+        background: var(--danger);
+        border: 2px solid var(--ui-border);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+        cursor: pointer;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+
+      @media (min-width: 768px) {
+        .modal-close {
+          border: 3px solid var(--ui-border);
+          width: 35px;
+          height: 35px;
+          font-size: 18px;
+        }
+      }
+
+      .modal-close:hover {
+        transform: rotate(90deg) scale(1.1);
+        background: #c0392b;
+      }
+
+      /* Shop Items */
+      .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      @media (min-width: 600px) {
+        .shop-grid {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+          margin-top: 20px;
+        }
+      }
+
+      .shop-item {
+        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+        border: 2px solid var(--ui-border);
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+      }
+
+      @media (min-width: 768px) {
+        .shop-item {
+          border: 3px solid var(--ui-border);
+          border-radius: 10px;
+          padding: 15px;
+        }
+      }
+
+      .shop-item::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(
+          45deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
+        transform: rotate(45deg);
+        transition: all 0.3s;
+      }
+
+      .shop-item:hover::before {
+        left: 100%;
+      }
+
+      .shop-item:hover {
+        transform: translateY(-5px);
+        border-color: var(--accent-light);
+        box-shadow: 0 5px 0 #2d3250, 0 8px 20px rgba(0, 0, 0, 0.4);
+      }
+
+      .shop-item-icon {
+        font-size: 28px;
+        margin-bottom: 6px;
+        display: block;
+      }
+
+      @media (min-width: 768px) {
+        .shop-item-icon {
+          font-size: 40px;
+          margin-bottom: 10px;
+        }
+      }
+
+      .shop-item-name {
+        font-size: 8px;
+        color: var(--accent-light);
+        margin-bottom: 4px;
+      }
+
+      @media (min-width: 768px) {
+        .shop-item-name {
+          font-size: 11px;
+          margin-bottom: 8px;
+        }
+      }
+
+      .shop-item-price {
+        font-size: 10px;
+        color: #f39c12;
+        margin-bottom: 6px;
+        font-weight: bold;
+      }
+
+      @media (min-width: 768px) {
+        .shop-item-price {
+          font-size: 14px;
+          margin-bottom: 10px;
+        }
+      }
+
+      .shop-item-effect {
+        font-size: 6px;
+        color: #bdc3c7;
+        margin-bottom: 6px;
+        line-height: 1.3;
+      }
+
+      @media (min-width: 768px) {
+        .shop-item-effect {
+          font-size: 8px;
+          margin-bottom: 10px;
+          line-height: 1.4;
+        }
+      }
+
+      .shop-item-btn {
+        background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        border: 2px solid #2ecc71;
+        border-radius: 4px;
+        padding: 6px 10px;
+        color: white;
+        font-size: 7px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+        width: 100%;
+      }
+
+      @media (min-width: 768px) {
+        .shop-item-btn {
+          border-radius: 5px;
+          padding: 8px 15px;
+          font-size: 9px;
+        }
+      }
+
+      .shop-item-btn:hover {
+        background: linear-gradient(135deg, #229954 0%, #1e8449 100%);
+        transform: scale(1.05);
+      }
+
+      .shop-item-btn:disabled {
+        background: #7f8c8d;
+        border-color: #95a5a6;
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .player-gold {
+        text-align: center;
+        font-size: 16px;
+        color: #f39c12;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        border: 2px solid #f39c12;
+      }
+
+      /* Achievement Styles */
+      .achievement-stats {
+        text-align: center;
+        font-size: 14px;
+        color: #ffd700;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 10px;
+        border: 2px solid #ffd700;
+      }
+
+      .achievement-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+
+      .achievement-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 10px;
+        border: 2px solid #555;
+        transition: all 0.3s;
+      }
+
+      .achievement-item.unlocked {
+        border-color: #ffd700;
+        background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+      }
+
+      .achievement-item.locked {
+        opacity: 0.5;
+        filter: grayscale(50%);
+      }
+
+      .achievement-icon {
+        font-size: 28px;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 50%;
+      }
+
+      .achievement-item.unlocked .achievement-icon {
+        background: linear-gradient(135deg, #ffd700, #f39c12);
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+      }
+
+      .achievement-info {
+        flex: 1;
+      }
+
+      .achievement-name {
+        font-size: 11px;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+
+      .achievement-item.unlocked .achievement-name {
+        color: #ffd700;
+      }
+
+      .achievement-desc {
+        font-size: 9px;
+        color: #aaa;
+      }
+
+      .achievement-status {
+        font-size: 18px;
+      }
+
+      /* Custom Quest Form */
+      .quest-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      @media (min-width: 768px) {
+        .quest-form {
+          gap: 15px;
+        }
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      @media (min-width: 768px) {
+        .form-group {
+          gap: 8px;
+        }
+      }
+
+      .form-label {
+        font-size: 8px;
+        color: var(--accent-light);
+        text-shadow: 1px 1px 0 var(--text-shadow);
+      }
+
+      @media (min-width: 768px) {
+        .form-label {
+          font-size: 10px;
+        }
+      }
+
+      .form-input,
+      .form-select {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid var(--ui-border);
+        border-radius: 6px;
+        padding: 10px;
+        color: var(--text-main);
+        font-family: inherit;
+        font-size: 10px;
+        transition: all 0.3s;
+      }
+
+      @media (min-width: 768px) {
+        .form-input,
+        .form-select {
+          border: 3px solid var(--ui-border);
+          border-radius: 8px;
+          padding: 12px;
+          font-size: 11px;
+        }
+      }
+
+      .form-input:focus,
+      .form-select:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 10px rgba(255, 107, 157, 0.3);
+      }
+
+      .form-range {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.3);
+        outline: none;
+      }
+
+      .form-range::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        border: 3px solid var(--ui-border);
+      }
+
+      .form-range::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        border: 3px solid var(--ui-border);
+      }
+
+      .range-value {
+        text-align: center;
+        font-size: 10px;
+        color: var(--exp-color);
+        margin-top: 4px;
+      }
+
+      @media (min-width: 768px) {
+        .range-value {
+          font-size: 12px;
+          margin-top: 5px;
+        }
+      }
+
+      .form-btn {
+        background: linear-gradient(135deg, var(--accent) 0%, #ff8fab 100%);
+        border: 2px solid var(--ui-border);
+        border-radius: 8px;
+        padding: 12px;
+        color: white;
+        font-size: 10px;
+        cursor: pointer;
+        font-family: inherit;
+        transition: all 0.2s;
+        margin-top: 8px;
+      }
+
+      @media (min-width: 768px) {
+        .form-btn {
+          border: 3px solid var(--ui-border);
+          border-radius: 10px;
+          padding: 15px;
+          font-size: 12px;
+          margin-top: 10px;
+        }
+      }
+
+      .form-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 0 #2d3250, 0 8px 15px rgba(0, 0, 0, 0.4);
+      }
+
+      /* Notification Toast */
+      .toast-container {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        z-index: 2000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+      }
+
+      @media (min-width: 768px) {
+        .toast-container {
+          top: 20px;
+          right: 20px;
+          left: auto;
+          align-items: flex-end;
+        }
+      }
+
+      .toast {
+        background: linear-gradient(135deg, #424769 0%, #2d3250 100%);
+        border: 2px solid var(--ui-border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        width: 100%;
+        max-width: 100%;
+        box-shadow: 0 3px 0 #2d3250, 0 5px 12px rgba(0, 0, 0, 0.5);
+        animation: slideIn 0.3s ease-out;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      @media (min-width: 768px) {
+        .toast {
+          border: 4px solid var(--ui-border);
+          border-radius: 10px;
+          padding: 15px 20px;
+          min-width: 300px;
+          width: auto;
+          max-width: none;
+          box-shadow: 0 5px 0 #2d3250, 0 8px 20px rgba(0, 0, 0, 0.5);
+          gap: 15px;
+        }
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateY(-100px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      @media (min-width: 768px) {
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      }
+
+      .toast-icon {
+        font-size: 24px;
+      }
+
+      @media (min-width: 768px) {
+        .toast-icon {
+          font-size: 30px;
+        }
+      }
+
+      .toast-content {
+        flex: 1;
+      }
+
+      .toast-title {
+        font-size: 9px;
+        color: var(--accent-light);
+        margin-bottom: 3px;
+      }
+
+      @media (min-width: 768px) {
+        .toast-title {
+          font-size: 12px;
+          margin-bottom: 5px;
+        }
+      }
+
+      .toast-message {
+        font-size: 7px;
+        color: var(--text-main);
+        line-height: 1.3;
+      }
+
+      @media (min-width: 768px) {
+        .toast-message {
+          font-size: 9px;
+          line-height: 1.4;
+        }
+      }
+
+      .toast.success {
+        border-color: var(--success);
+      }
+
+      .toast.achievement {
+        border-color: #ffd700;
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+      }
+
+      /* Scrollbar */
+      .modal-content::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      .modal-content::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 10px;
+      }
+
+      .modal-content::-webkit-scrollbar-thumb {
+        background: var(--accent);
+        border-radius: 10px;
+        border: 2px solid var(--ui-border);
+      }
+
+      /* Custom Button */
+      .btn {
+        background: linear-gradient(
+          135deg,
+          var(--ui-panel) 0%,
+          var(--bg-light) 100%
+        );
+        color: var(--text-main);
+        border: 2px solid var(--ui-border);
+        border-radius: 8px;
+        padding: 10px;
+        width: 100%;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 8px;
+        margin-bottom: 6px;
+        text-align: left;
+        position: relative;
+        transition: all 0.2s;
+        box-shadow: 0 2px 0 #2d3250, 0 4px 6px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      @media (min-width: 768px) {
+        .btn {
+          border: 3px solid var(--ui-border);
+          border-radius: 10px;
+          padding: 15px;
+          font-size: 11px;
+          margin-bottom: 12px;
+          box-shadow: 0 4px 0 #2d3250, 0 6px 10px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      .btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .btn:hover::before {
+        left: 100%;
+      }
+
+      .btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 7px 0 #2d3250, 0 10px 20px rgba(0, 0, 0, 0.4);
+        border-color: var(--accent-light);
+      }
+
+      .btn:active {
+        transform: translateY(2px);
+        box-shadow: 0 2px 0 #2d3250, 0 3px 5px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn small {
+        display: block;
+        font-size: 6px;
+        color: #ffffff;
+        margin-top: 4px;
+        line-height: 1.3;
+        opacity: 0.9;
+      }
+
+      @media (min-width: 768px) {
+        .btn small {
+          font-size: 8px;
+          margin-top: 8px;
+          line-height: 1.4;
+        }
+      }
+
+      .btn-fight {
+        background: linear-gradient(
+          135deg,
+          #ff6b6b 0%,
+          #ee5a6f 100%
+        ) !important;
+        border-color: #ffd93d !important;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 4px 0 #2d3250, 0 6px 10px rgba(0, 0, 0, 0.3),
+            0 0 0 0 rgba(255, 107, 107, 0.7);
+        }
+        50% {
+          box-shadow: 0 4px 0 #2d3250, 0 6px 10px rgba(0, 0, 0, 0.3),
+            0 0 0 15px rgba(255, 107, 107, 0);
+        }
+      }
+
+      .btn-rest {
+        background: linear-gradient(
+          135deg,
+          var(--success) 0%,
+          #7bc862 100%
+        ) !important;
+        border-color: #d4f1c5 !important;
+      }
+
+      .btn-bad-rest {
+        background: linear-gradient(
+          135deg,
+          #f39c12 0%,
+          #e67e22 100%
+        ) !important;
+        border-color: #ffeaa7 !important;
+      }
+
+      .btn-rest:disabled,
+      .btn-bad-rest:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        filter: grayscale(50%);
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #c0392b, #e74c3c) !important;
+        border-color: #922b21 !important;
+      }
+
+      .btn-danger:hover {
+        background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+        box-shadow: 0 3px 0 #7b241c, 0 6px 15px rgba(231, 76, 60, 0.4) !important;
+      }
+
+      /* Bars */
+      .bar-container {
+        margin-bottom: 10px;
+      }
+
+      @media (min-width: 768px) {
+        .bar-container {
+          margin-bottom: 15px;
+        }
+      }
+
+      .bar-label {
+        font-size: 8px;
+        margin-bottom: 4px;
+        color: var(--accent-light);
+        text-shadow: 1px 1px var(--text-shadow);
+      }
+
+      @media (min-width: 768px) {
+        .bar-label {
+          font-size: 10px;
+          margin-bottom: 5px;
+        }
+      }
+
+      .bar-box {
+        background: #1a1d2e;
+        border: 3px solid var(--ui-border);
+        border-radius: 10px;
+        height: 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+      }
+
+      .bar-fill {
+        height: 100%;
+        transition: width 0.5s ease-out;
+        position: relative;
+        border-radius: 7px;
+      }
+
+      .bar-fill::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 50%;
+        background: linear-gradient(
+          to bottom,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        );
+        border-radius: 7px 7px 0 0;
+      }
+
+      .hp-fill {
+        background: linear-gradient(90deg, #ff6b9d 0%, #ff8fab 100%);
+        box-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
+      }
+
+      .exp-fill {
+        background: linear-gradient(90deg, #ffd93d 0%, #ffed4e 100%);
+        box-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
+      }
+
+      .bar-text {
+        position: absolute;
+        width: 100%;
+        text-align: center;
+        top: 3px;
+        font-size: 9px;
+        text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+        font-weight: bold;
+        z-index: 1;
+      }
+
+      /* Divider */
+      .divider {
+        border: none;
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--ui-border),
+          transparent
+        );
+        margin: 20px 0;
+      }
+
+      /* Icons Animation */
+      .btn:hover {
+        animation: wiggle 0.5s ease-in-out;
+      }
+
+      @keyframes wiggle {
+        0%,
+        100% {
+          transform: translateY(-3px) rotate(0deg);
+        }
+        25% {
+          transform: translateY(-3px) rotate(-3deg);
+        }
+        75% {
+          transform: translateY(-3px) rotate(3deg);
+        }
+      }
+
+      /* === BATTLE LAYER === */
+      #battle-layer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #434343 0%, #000000 100%);
+        z-index: 20;
+        display: none;
+        overflow: hidden;
+      }
+
+      #gameCanvas {
+        display: block;
+        margin: 0 auto;
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+        image-rendering: pixelated;
+        border: 4px solid var(--ui-border);
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5),
+          inset 0 0 50px rgba(0, 0, 0, 0.3);
+        max-width: 100%;
+        max-height: 80vh;
+        width: auto;
+        height: auto;
+      }
+
+      @media (min-width: 768px) {
+        #gameCanvas {
+          border: 8px solid var(--ui-border);
+          border-radius: 15px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5),
+            inset 0 0 100px rgba(0, 0, 0, 0.3);
+        }
+      }
+
+      #battle-ui {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 95%;
+        max-width: 800px;
+        text-align: center;
+        pointer-events: none;
+      }
+
+      @media (min-width: 768px) {
+        #battle-ui {
+          bottom: 30px;
+        }
+      }
+
+      .battle-hud {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        justify-content: space-between;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .combo-indicator {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 60px;
+        color: #ffd700;
+        text-shadow: 0 0 20px #ffd700, 3px 3px 0 #000;
+        animation: comboAnim 0.5s ease-out;
+        pointer-events: none;
+        z-index: 15;
+      }
+
+      @keyframes comboAnim {
+        0% {
+          transform: translate(-50%, -50%) scale(0);
+          opacity: 0;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.2);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 1;
+        }
+      }
+
+      .battle-msg {
+        font-size: 10px;
+        color: var(--text-main);
+        text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+        background: linear-gradient(
+          135deg,
+          rgba(66, 71, 105, 0.95),
+          rgba(45, 50, 80, 0.95)
+        );
+        padding: 8px 15px;
+        border: 3px solid var(--ui-border);
+        border-radius: 10px;
+        display: inline-block;
+        box-shadow: 0 3px 0 #2d3250, 0 5px 15px rgba(0, 0, 0, 0.5);
+        animation: msgPop 0.3s ease-out;
+        max-width: 90%;
+      }
+
+      @media (min-width: 768px) {
+        .battle-msg {
+          font-size: 18px;
+          padding: 15px 30px;
+          border: 4px solid var(--ui-border);
+          border-radius: 15px;
+          box-shadow: 0 5px 0 #2d3250, 0 8px 20px rgba(0, 0, 0, 0.5);
+          max-width: none;
+        }
+      }
+
+      @keyframes msgPop {
+        0% {
+          transform: scale(0);
+        }
+        50% {
+          transform: scale(1.1);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      /* Loading Animation */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .panel {
+        animation: fadeIn 0.6s ease-out, panelFloat 3s ease-in-out infinite 0.6s;
+      }
+
+      /* Emoji Enhancement */
+      .btn::after {
+        content: "→";
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0;
+        transition: all 0.3s;
+        font-size: 16px;
+      }
+
+      .btn:hover::after {
+        opacity: 1;
+        right: 10px;
+      }
+
+      /* === COLLAPSIBLE SECTIONS (Mobile) === */
+      .section-header {
+        display: none;
+      }
+
+      @media (max-width: 767px) {
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: linear-gradient(135deg, var(--accent) 0%, #ff8fab 100%);
+          border: 2px solid var(--ui-border);
+          border-radius: 8px;
+          padding: 10px 12px;
+          margin-bottom: 8px;
+          cursor: pointer;
+          transition: all 0.3s;
+          box-shadow: 0 2px 0 #2d3250;
+        }
+
+        .section-header:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 3px 0 #2d3250;
+        }
+
+        .section-header:active {
+          transform: translateY(1px);
+          box-shadow: 0 1px 0 #2d3250;
+        }
+
+        .section-title {
+          font-size: 9px;
+          color: white;
+          text-shadow: 1px 1px 0 rgba(0,0,0,0.3);
+          margin: 0;
+        }
+
+        .section-toggle {
+          font-size: 12px;
+          transition: transform 0.3s;
+          color: white;
+        }
+
+        .section-header.collapsed .section-toggle {
+          transform: rotate(-90deg);
+        }
+
+        .section-content {
+          max-height: 2000px;
+          overflow: hidden;
+          transition: max-height 0.4s ease-out, opacity 0.3s ease-out, padding 0.3s;
+          opacity: 1;
+        }
+
+        .section-content.collapsed {
+          max-height: 0;
+          opacity: 0;
+          padding-top: 0;
+          padding-bottom: 0;
+          margin-bottom: 0;
+        }
+
+        /* Specific section styles */
+        .stats-section .section-header {
+          background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .quests-section .section-header {
+          background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .combat-section .section-header {
+          background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        /* Hide elements on mobile */
+        .desktop-only {
+          display: none !important;
+        }
+      }
+
+      /* Show elements on desktop */
+      @media (min-width: 768px) {
+        .desktop-only {
+          display: block !important;
+        }
+        
+        .section-content {
+          max-height: none !important;
+          opacity: 1 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui-layer">
+      <div class="dashboard">
+        <!-- Left Panel: Character Stats -->
+        <div class="panel">
+          <h1>⚔️ LIFE QUEST ⚔️</h1>
+
+          <div class="hero-avatar">HERO</div>
+
+          <div class="stat-row">
+            <span>🎖️ LEVEL:</span> <span id="lvl-txt">1</span>
+          </div>
+          <div class="stat-row">
+            <span>🗺️ STAGE:</span> <span id="stage-txt">1</span>
+          </div>
+
+          <div class="gold-display">
+            <span>💰 GOLD:</span> <span id="gold-txt">0</span>
+          </div>
+
+          <div class="streak-display">
+            <span>🔥 STREAK:</span> <span id="streak-txt">0</span> Days
+          </div>
+
+          <div class="bar-container">
+            <div class="bar-label">❤️ HEALTH POINTS</div>
+            <div class="bar-box">
+              <div
+                id="hp-bar"
+                class="bar-fill hp-fill"
+                style="width: 100%"
+              ></div>
+              <div id="hp-txt" class="bar-text"></div>
+            </div>
+          </div>
+
+          <div class="bar-container">
+            <div class="bar-label">⭐ EXPERIENCE</div>
+            <div class="bar-box">
+              <div
+                id="exp-bar"
+                class="bar-fill exp-fill"
+                style="width: 0%"
+              ></div>
+              <div id="exp-txt" class="bar-text"></div>
+            </div>
+          </div>
+
+          <!-- Stats Section (Collapsible on mobile) -->
+          <div class="stats-section">
+            <div class="section-header" onclick="toggleSection(this)">
+              <span class="section-title">📊 CHARACTER STATS</span>
+              <span class="section-toggle">▼</span>
+            </div>
+            <div class="section-content">
+              <hr class="divider desktop-only" />
+
+              <div class="stat-row">
+                <span>💪 STRENGTH:</span> <span id="str-txt">5</span>
+              </div>
+              <div class="stat-row">
+                <span>⚡ AGILITY:</span> <span id="agi-txt">5</span>
+              </div>
+              <div class="stat-row">
+                <span>🛡️ VITALITY:</span> <span id="vit-txt">5</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-btn-group">
+            <button class="btn btn-small" onclick="openShop()">🛒 SHOP</button>
+            <button class="btn btn-small" onclick="openAchievements()">🏆 TROPHY</button>
+            <button class="btn btn-small" onclick="addCustomQuest()">
+              ➕ QUEST
+            </button>
+            <button class="btn btn-small" onclick="reloadData()">
+              🔄 SYNC
+            </button>
+            <button class="btn btn-small btn-danger" onclick="confirmReset()">
+              🗑️ RESET
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Panel: Actions -->
+        <div class="panel">
+          <!-- Daily Quests Section -->
+          <div class="quests-section">
+            <div class="section-header" onclick="toggleSection(this)">
+              <span class="section-title">📋 DAILY QUESTS</span>
+              <span class="section-toggle">▼</span>
+            </div>
+            <h2 class="desktop-only">📋 DAILY QUESTS</h2>
+            <div class="section-content">
+              <div class="quest-scroll" id="quests-container">
+                <!-- Quests will be dynamically generated here -->
+              </div>
+            </div>
+          </div>
+
+          <br class="desktop-only" />
+          
+          <!-- Combat Zone Section -->
+          <div class="combat-section">
+            <div class="section-header" onclick="toggleSection(this)">
+              <span class="section-title">⚔️ COMBAT ZONE</span>
+              <span class="section-toggle">▼</span>
+            </div>
+            <h2 class="desktop-only">⚔️ COMBAT ZONE</h2>
+            <div class="section-content">
+              <button class="btn btn-fight" onclick="startBattle()">
+                🔥 FIGHT BOSS LV.<span id="next-stage-txt">1</span>
+                <small>💀 DANGER! | 🎁 MASSIVE REWARDS | ⭐ +BIG EXP</small>
+              </button>
+              <button class="btn btn-rest" id="btn-good-rest" onclick="goodRest()">
+                ⛺ GOOD REST
+                <small>😴 FULL HP RESTORE | 🌙 SLEPT WELL (8h+)</small>
+              </button>
+              <button class="btn btn-bad-rest" id="btn-bad-rest" onclick="badRest()">
+                😵 BAD REST
+                <small>💤 PARTIAL HP | 😫 POOR SLEEP</small>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Battle Scene -->
+    <div id="battle-layer">
+      <canvas id="gameCanvas"></canvas>
+      <div id="battle-ui">
+        <div id="battle-msg" class="battle-msg">⚔️ BATTLE START! ⚔️</div>
+      </div>
+    </div>
+
+    <!-- Modal Overlays -->
+    <div id="shop-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">🛒 SHOP</div>
+          <button class="modal-close" onclick="closeModal('shop-modal')">
+            ✕
+          </button>
+        </div>
+        <div class="player-gold">
+          💰 Your Gold: <span id="modal-gold">0</span>
+        </div>
+        <div class="shop-grid" id="shop-items"></div>
+      </div>
+    </div>
+
+    <div id="achievement-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">🏆 ACHIEVEMENTS</div>
+          <button class="modal-close" onclick="closeModal('achievement-modal')">
+            ✕
+          </button>
+        </div>
+        <div class="achievement-stats">
+          🌟 Unlocked: <span id="achievement-count">0</span> / <span id="achievement-total">0</span>
+        </div>
+        <div class="achievement-grid" id="achievement-list"></div>
+      </div>
+    </div>
+
+    <div id="quest-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">➕ CREATE CUSTOM QUEST</div>
+          <button class="modal-close" onclick="closeModal('quest-modal')">
+            ✕
+          </button>
+        </div>
+        <form class="quest-form" onsubmit="submitCustomQuest(event)">
+          <div class="form-group">
+            <label class="form-label">📝 Quest Name</label>
+            <input
+              type="text"
+              id="quest-name"
+              class="form-input"
+              placeholder="Enter quest name..."
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">📂 Category</label>
+            <select id="quest-category" class="form-select" required>
+              <option value="health">💪 Health & Fitness</option>
+              <option value="mind">🧠 Mind & Learning</option>
+              <option value="productivity">📋 Productivity</option>
+              <option value="creative">🎨 Creative</option>
+              <option value="social">👥 Social</option>
+              <option value="selfcare">🌟 Self Care</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">⭐ EXP Reward</label>
+            <input
+              type="range"
+              id="quest-exp"
+              class="form-range"
+              min="10"
+              max="50"
+              value="20"
+              oninput="updateRangeValue('quest-exp', 'exp-value')"
+            />
+            <div class="range-value" id="exp-value">20 EXP</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">💰 Gold Reward</label>
+            <input
+              type="range"
+              id="quest-gold"
+              class="form-range"
+              min="5"
+              max="30"
+              value="10"
+              oninput="updateRangeValue('quest-gold', 'gold-value')"
+            />
+            <div class="range-value" id="gold-value">10 Gold</div>
+          </div>
+
+          <button type="submit" class="form-btn">✨ CREATE QUEST</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script>
+      // ================= CONFIGURATION =================
+      const CONFIG = {
+        SAVE_KEY: "pixelRpgV3",
+        CANVAS: { 
+          WIDTH: 800, 
+          HEIGHT: 400,
+          MOBILE_WIDTH: 360,
+          MOBILE_HEIGHT: 500
+        },
+        PLAYER: {
+          INITIAL: {
+            lvl: 1,
+            exp: 0,
+            maxExp: 80,
+            hp: 100,
+            maxHp: 100,
+            str: 5,
+            agi: 5,
+            vit: 5,
+            stage: 1,
+            gold: 0,
+            streak: 0,
+            lastPlayed: null,
+            inventory: [],
+            achievements: [],
+            customQuests: [],
+            completedToday: [],
+            restedToday: null,
+            // New systems
+            questPriorities: {}, // taskId: 'urgent'|'important'|'normal'
+            questSchedules: {}, // taskId: {startTime, endTime, duration}
+            questNotes: {}, // taskId: 'note text'
+            questTags: {}, // taskId: ['tag1', 'tag2']
+            questDependencies: {}, // taskId: ['requiredTaskId1', 'requiredTaskId2']
+            timeTracking: {}, // taskId: {totalTime, sessions: [{start, end, duration}]}
+            habitChains: {}, // taskId: {currentChain, longestChain, lastCompleted}
+            weeklyGoal: 15, // quests per week
+            monthlyGoal: 60, // quests per month
+            weeklyProgress: 0,
+            monthlyProgress: 0,
+            currentWeek: null,
+            currentMonth: null,
+            energyLevel: 100, // 0-100
+            focusLevel: 100, // 0-100
+            lastEnergyUpdate: null,
+            questTemplates: [], // [{name, quests: [taskIds], icon}]
+            analytics: {
+              dailyCompletions: [], // [{date, count}]
+              categoryStats: {}, // category: count
+              timeStats: {}, // hour: count
+              productivityScore: 0,
+            },
+            pomodoroStats: {
+              completedSessions: 0,
+              totalFocusTime: 0,
+            },
+            reviewHistory: [], // [{date, summary, highlights}]
+          },
+          BASE_HP: 80,
+          HP_PER_VIT: 15,
+          EXP_MULT: 1.25,
+        },
+        QUEST_CATEGORIES: {
+          health: { icon: "💪", color: "#e74c3c", stat: "str" },
+          mind: { icon: "🧠", color: "#3498db", stat: "agi" },
+          productivity: { icon: "📋", color: "#f39c12", stat: "agi" },
+          creative: { icon: "🎨", color: "#9b59b6", stat: "agi" },
+          social: { icon: "👥", color: "#1abc9c", stat: "vit" },
+          selfcare: { icon: "🌟", color: "#e91e63", stat: "vit" },
+        },
+        TASKS: {
+          // Health
+          workout: {
+            name: "Workout",
+            cat: "health",
+            str: 0.5,
+            vit: 0.3,
+            exp: 30,
+            gold: 20,
+            hpCost: 5,
+          },
+          run: {
+            name: "Running/Cardio",
+            cat: "health",
+            vit: 0.6,
+            exp: 35,
+            gold: 25,
+            hpCost: 6,
+          },
+          healthyMeal: {
+            name: "Healthy Meal",
+            cat: "health",
+            vit: 0.2,
+            exp: 15,
+            gold: 12,
+            hpCost: 0,
+          },
+
+          // Mind & Learning
+          study: {
+            name: "Study Session",
+            cat: "mind",
+            agi: 0.5,
+            exp: 30,
+            gold: 20,
+            hpCost: 3,
+          },
+          read: {
+            name: "Read Book",
+            cat: "mind",
+            agi: 0.4,
+            exp: 25,
+            gold: 18,
+            hpCost: 2,
+          },
+          learn: {
+            name: "Learn New Skill",
+            cat: "mind",
+            agi: 0.6,
+            str: 0.2,
+            exp: 40,
+            gold: 30,
+            hpCost: 5,
+          },
+
+          // Productivity
+          work: {
+            name: "Deep Work Session",
+            cat: "productivity",
+            agi: 0.5,
+            exp: 35,
+            gold: 25,
+            hpCost: 4,
+          },
+          chores: {
+            name: "Household Chores",
+            cat: "productivity",
+            str: 0.2,
+            agi: 0.2,
+            exp: 20,
+            gold: 15,
+            hpCost: 2,
+          },
+          organize: {
+            name: "Organize Space",
+            cat: "productivity",
+            agi: 0.4,
+            exp: 22,
+            gold: 18,
+            hpCost: 2,
+          },
+
+          // Creative
+          creative: {
+            name: "Creative Project",
+            cat: "creative",
+            agi: 0.5,
+            exp: 32,
+            gold: 22,
+            hpCost: 3,
+          },
+          practice: {
+            name: "Practice Hobby",
+            cat: "creative",
+            agi: 0.4,
+            vit: 0.2,
+            exp: 28,
+            gold: 20,
+            hpCost: 2,
+          },
+
+          // Social
+          social: {
+            name: "Social Activity",
+            cat: "social",
+            vit: 0.5,
+            exp: 25,
+            gold: 20,
+            hpCost: 3,
+          },
+          help: {
+            name: "Help Someone",
+            cat: "social",
+            vit: 0.4,
+            str: 0.2,
+            exp: 30,
+            gold: 22,
+            hpCost: 2,
+          },
+
+          // Self Care
+          meditation: {
+            name: "Meditation",
+            cat: "selfcare",
+            vit: 0.5,
+            exp: 20,
+            gold: 15,
+            hpCost: -5,
+          },
+          sleep: {
+            name: "Good Sleep (8h)",
+            cat: "selfcare",
+            vit: 0.4,
+            exp: 25,
+            gold: 18,
+            hpCost: -15,
+          },
+          journal: {
+            name: "Journaling",
+            cat: "selfcare",
+            agi: 0.2,
+            vit: 0.2,
+            exp: 18,
+            gold: 14,
+            hpCost: 0,
+          },
+        },
+        SHOP_ITEMS: {
+          healthPotion: {
+            name: "Health Potion",
+            price: 30,
+            effect: "hp",
+            value: 30,
+            icon: "🧪",
+          },
+          energyDrink: {
+            name: "Energy Drink",
+            price: 50,
+            effect: "hp",
+            value: 50,
+            icon: "⚡",
+          },
+          strBoost: {
+            name: "Strength Tome",
+            price: 100,
+            effect: "str",
+            value: 1,
+            icon: "📕",
+          },
+          agiBoost: {
+            name: "Agility Tome",
+            price: 100,
+            effect: "agi",
+            value: 1,
+            icon: "📘",
+          },
+          vitBoost: {
+            name: "Vitality Tome",
+            price: 100,
+            effect: "vit",
+            value: 1,
+            icon: "📗",
+          },
+          expBoost: {
+            name: "EXP Scroll",
+            price: 150,
+            effect: "exp",
+            value: 100,
+            icon: "📜",
+          },
+        },
+        ACHIEVEMENTS: [
+          {
+            id: "first_quest",
+            name: "First Step",
+            desc: "Complete your first quest",
+            reward: 50,
+          },
+          {
+            id: "quest_5_day",
+            name: "Productive Day",
+            desc: "Complete 5 quests in one day",
+            reward: 75,
+          },
+          {
+            id: "early_bird",
+            name: "Early Bird",
+            desc: "Complete a quest before 9 AM",
+            reward: 50,
+          },
+          {
+            id: "streak_3",
+            name: "Consistent",
+            desc: "3 day streak",
+            reward: 100,
+          },
+          {
+            id: "streak_7",
+            name: "Dedicated",
+            desc: "7 day streak",
+            reward: 200,
+          },
+          {
+            id: "streak_14",
+            name: "Unstoppable",
+            desc: "14 day streak",
+            reward: 400,
+          },
+          {
+            id: "streak_30",
+            name: "Legend",
+            desc: "30 day streak",
+            reward: 1000,
+          },
+          { id: "level_3", name: "Beginner", desc: "Reach level 3", reward: 80 },
+          { id: "level_5", name: "Novice", desc: "Reach level 5", reward: 150 },
+          {
+            id: "level_10",
+            name: "Expert",
+            desc: "Reach level 10",
+            reward: 300,
+          },
+          {
+            id: "gold_100",
+            name: "Saver",
+            desc: "Earn 100 gold total",
+            reward: 30,
+          },
+          {
+            id: "gold_500",
+            name: "Wealthy",
+            desc: "Earn 500 gold total",
+            reward: 100,
+          },
+          {
+            id: "all_categories",
+            name: "Well-Rounded",
+            desc: "Complete quests in all categories",
+            reward: 250,
+          },
+          {
+            id: "good_rest",
+            name: "Well Rested",
+            desc: "Use Good Rest 7 times",
+            reward: 100,
+          },
+          {
+            id: "boss_1",
+            name: "First Victory",
+            desc: "Defeat your first boss",
+            reward: 0,
+          },
+          {
+            id: "boss_5",
+            name: "Boss Hunter",
+            desc: "Reach Stage 5",
+            reward: 0,
+          },
+          {
+            id: "boss_10",
+            name: "Champion",
+            desc: "Reach Stage 10",
+            reward: 0,
+          },
+          {
+            id: "boss_20",
+            name: "Legendary",
+            desc: "Reach Stage 20",
+            reward: 0,
+          },
+        ],
+        ANIMATION: { SPEED: 30, SHAKE_DECAY: 0.9 },
+        PARTICLES: { EXPLOSION: 25, STARS: 10 },
+        PRIORITIES: {
+          urgent: { icon: "🔴", label: "Urgent", bonus: 1.5, color: "#e74c3c" },
+          important: {
+            icon: "🟡",
+            label: "Important",
+            bonus: 1.25,
+            color: "#f39c12",
+          },
+          normal: { icon: "🟢", label: "Normal", bonus: 1.0, color: "#2ecc71" },
+        },
+        POMODORO: {
+          WORK_TIME: 25 * 60, // 25 minutes in seconds
+          BREAK_TIME: 5 * 60, // 5 minutes
+          LONG_BREAK: 15 * 60, // 15 minutes
+          SESSIONS_UNTIL_LONG_BREAK: 4,
+        },
+        ENERGY: {
+          DECAY_PER_HOUR: 5,
+          RESTORE_ON_REST: 30,
+          LOW_THRESHOLD: 30,
+        },
+      };
+
+      // ================= FIREBASE SETUP =================
+      // Replace placeholder values with your Firebase project config
+      const firebaseConfig = {
+        apiKey: "AIzaSyAG2DO1e0M7Yscmt68iFBUqVm4dTnHloNw",
+        authDomain: "liferpg-2bdbf.firebaseapp.com",
+        projectId: "liferpg-2bdbf",
+        storageBucket: "liferpg-2bdbf.firebasestorage.app",
+        messagingSenderId: "843620560318",
+        appId: "1:843620560318:web:3fa8bbfacf9b5330431def",
+        measurementId: "G-FG0XKEB8SQ",
+      };
+
+      const clientId = (() => {
+        const key = "pixelRpgClientId";
+        const existing = localStorage.getItem(key);
+        if (existing) return existing;
+        const generated = "player-" + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(key, generated);
+        return generated;
+      })();
+
+      const FirebaseService = {
+        initialized: false,
+        db: null,
+
+        async init() {
+          // Wait for Firebase SDK if not ready
+          let retries = 0;
+          while (!window.firebase && retries < 30) {
+            await new Promise(r => setTimeout(r, 100));
+            retries++;
+          }
+          
+          if (
+            !window.firebase ||
+            !firebaseConfig.apiKey ||
+            firebaseConfig.apiKey.includes("YOUR_API_KEY")
+          ) {
+            console.warn("Firebase not initialized: missing config or SDK not loaded");
+            return false;
+          }
+          try {
+            if (firebase.apps && !firebase.apps.length) {
+              firebase.initializeApp(firebaseConfig);
+            }
+            this.db = firebase.firestore();
+            this.initialized = true;
+            console.log("Firebase initialized successfully");
+            return true;
+          } catch (err) {
+            console.error("Firebase init error", err);
+            return false;
+          }
+        },
+
+        async savePlayerSnapshot() {
+          if (!this.initialized || !this.db) return;
+          try {
+            await this.db.collection("lifeQuestPlayers").doc(clientId).set({
+              player,
+              updatedAt: new Date().toISOString(),
+            });
+          } catch (err) {
+            console.warn("Firebase save failed", err.message);
+          }
+        },
+
+        async loadPlayerSnapshot() {
+          if (!this.initialized || !this.db) return false;
+          try {
+            const doc = await this.db
+              .collection("lifeQuestPlayers")
+              .doc(clientId)
+              .get();
+            if (doc.exists) {
+              const data = doc.data();
+              if (data && data.player) {
+                // โหลดข้อมูลจาก Firebase โดยตรง
+                player = { ...CONFIG.PLAYER.INITIAL, ...data.player };
+                return true;
+              }
+            }
+          } catch (err) {
+            console.warn("Firebase load failed", err.message);
+          }
+          return false;
+        },
+      };
+
+      // ================= GAME STATE =================
+      // ใช้ Firebase เก็บข้อมูลอย่างเดียว - เริ่มต้นด้วยค่า default แล้วโหลดจาก Firebase
+      let player = { ...CONFIG.PLAYER.INITIAL };
+      let editingQuestIndex = null;
+      let gameReady = false; // Flag to prevent saving before data is loaded
+
+      // ================= UTILITY FUNCTIONS =================
+      const Utils = {
+        saveGame: () => {
+          // บันทึกไปยัง Firebase อย่างเดียว (only after game is ready)
+          if (gameReady) {
+            FirebaseService.savePlayerSnapshot();
+          }
+        },
+
+        updateElement: (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.innerText = value;
+        },
+
+        updateBar: (barId, textId, current, max) => {
+          document.getElementById(barId).style.width = `${
+            (current / max) * 100
+          }%`;
+          Utils.updateElement(textId, `${Math.ceil(current)}/${max}`);
+        },
+
+        calculateMaxHp: (vit) =>
+          Math.floor(CONFIG.PLAYER.BASE_HP + vit * CONFIG.PLAYER.HP_PER_VIT),
+
+        checkStreak: () => {
+          const today = Utils.getTodayKey();
+          const lastPlayed = player.lastPlayed;
+          const existing = player.completedToday || [];
+          const filteredToday = existing.filter((entry) =>
+            entry.endsWith("_" + today)
+          );
+
+          if (!lastPlayed) {
+            player.streak = 1;
+            player.completedToday = [];
+          } else {
+            const last = new Date(lastPlayed);
+            const now = new Date();
+            const diffDays = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) {
+              // Same day: keep today's completion list only
+              player.completedToday = filteredToday;
+            } else if (diffDays === 1) {
+              player.streak++;
+              player.completedToday = [];
+              checkStreakAchievements();
+            } else if (diffDays > 1) {
+              player.streak = 1;
+              player.completedToday = [];
+            }
+          }
+
+          player.lastPlayed = today;
+        },
+
+        getTodayKey: () => new Date().toDateString(),
+
+        isCompletedToday: (taskId) => {
+          const today = Utils.getTodayKey();
+          return (
+            player.completedToday &&
+            player.completedToday.includes(taskId + "_" + today)
+          );
+        },
+
+        markCompleted: (taskId) => {
+          const today = Utils.getTodayKey();
+          if (!player.completedToday) player.completedToday = [];
+          player.completedToday.push(taskId + "_" + today);
+        },
+      };
+
+      function checkStreakAchievements() {
+        if (player.streak === 3) unlockAchievement("streak_3");
+        if (player.streak === 7) unlockAchievement("streak_7");
+        if (player.streak === 14) unlockAchievement("streak_14");
+        if (player.streak === 30) unlockAchievement("streak_30");
+      }
+
+      function unlockAchievement(id) {
+        if (player.achievements.includes(id)) return;
+
+        const achievement = CONFIG.ACHIEVEMENTS.find((a) => a.id === id);
+        if (!achievement) return;
+
+        player.achievements.push(id);
+        player.gold += achievement.reward;
+
+        showToast(
+          "achievement",
+          "🏆 Achievement Unlocked!",
+          `${achievement.name}\n${achievement.desc}\n+${achievement.reward} Gold`
+        );
+
+        Utils.saveGame();
+      }
+
+      // ================= UI FUNCTIONS =================
+      function toggleSection(header) {
+        const section = header.parentElement;
+        const content = section.querySelector('.section-content');
+        
+        header.classList.toggle('collapsed');
+        content.classList.toggle('collapsed');
+        
+        // Save collapsed state to localStorage
+        const sectionClass = section.className.split(' ')[0];
+        const isCollapsed = content.classList.contains('collapsed');
+        localStorage.setItem('section_' + sectionClass, isCollapsed ? 'collapsed' : 'expanded');
+      }
+
+      function restoreCollapsedSections() {
+        // Only restore on mobile
+        if (window.innerWidth >= 768) return;
+        
+        const sections = ['stats-section', 'quests-section', 'combat-section'];
+        sections.forEach(sectionClass => {
+          const state = localStorage.getItem('section_' + sectionClass);
+          if (state === 'collapsed') {
+            const section = document.querySelector('.' + sectionClass);
+            if (section) {
+              const header = section.querySelector('.section-header');
+              const content = section.querySelector('.section-content');
+              if (header && content) {
+                header.classList.add('collapsed');
+                content.classList.add('collapsed');
+              }
+            }
+          }
+        });
+      }
+
+      function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.add("active");
+          if (modalId === "shop-modal") {
+            renderShop();
+          }
+        }
+      }
+
+      function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+          modal.classList.remove("active");
+        }
+      }
+
+      function renderShop() {
+        const container = document.getElementById("shop-items");
+        const goldDisplay = document.getElementById("modal-gold");
+
+        goldDisplay.innerText = player.gold || 0;
+
+        let html = "";
+        Object.entries(CONFIG.SHOP_ITEMS).forEach(([key, item]) => {
+          const canAfford = player.gold >= item.price;
+          const effectText =
+            item.effect === "hp"
+              ? `Restore ${item.value} HP`
+              : item.effect === "exp"
+              ? `Gain ${item.value} EXP`
+              : `+${item.value} ${item.effect.toUpperCase()}`;
+
+          html += `
+            <div class="shop-item">
+              <span class="shop-item-icon">${item.icon}</span>
+              <div class="shop-item-name">${item.name}</div>
+              <div class="shop-item-price">💰 ${item.price}G</div>
+              <div class="shop-item-effect">${effectText}</div>
+              <button class="shop-item-btn" onclick="buyItem('${key}')" ${
+            !canAfford ? "disabled" : ""
+          }>
+                ${canAfford ? "BUY NOW" : "NOT ENOUGH GOLD"}
+              </button>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+      }
+
+      function updateRangeValue(rangeId, valueId) {
+        const range = document.getElementById(rangeId);
+        const valueDisplay = document.getElementById(valueId);
+        const value = range.value;
+
+        if (rangeId.includes("exp")) {
+          valueDisplay.innerText = `${value} EXP`;
+        } else if (rangeId.includes("gold")) {
+          valueDisplay.innerText = `${value} Gold`;
+        } else if (rangeId.includes("hp")) {
+          valueDisplay.innerText = `${value} HP`;
+        }
+      }
+
+      function setQuestModalMode(mode) {
+        const titleEl = document.querySelector("#quest-modal .modal-title");
+        const submitBtn = document.querySelector("#quest-modal .form-btn");
+        if (titleEl)
+          titleEl.innerText =
+            mode === "edit" ? "✏️ EDIT CUSTOM QUEST" : "➕ CREATE CUSTOM QUEST";
+        if (submitBtn)
+          submitBtn.innerText =
+            mode === "edit" ? "💾 SAVE CHANGES" : "✨ CREATE QUEST";
+      }
+
+      function submitCustomQuest(event) {
+        event.preventDefault();
+
+        const name = document.getElementById("quest-name").value;
+        const category = document.getElementById("quest-category").value;
+        const exp = parseInt(document.getElementById("quest-exp").value);
+        const gold = parseInt(document.getElementById("quest-gold").value);
+
+        if (!player.customQuests) player.customQuests = [];
+        const questPayload = {
+          name,
+          category,
+          exp,
+          gold,
+          stat: CONFIG.QUEST_CATEGORIES[category].stat,
+        };
+
+        if (editingQuestIndex === null) {
+          player.customQuests.push(questPayload);
+          showToast(
+            "success",
+            "✅ Quest Created!",
+            `${name} added to your daily quests`
+          );
+        } else {
+          player.customQuests[editingQuestIndex] = questPayload;
+          showToast(
+            "success",
+            "💾 Quest Updated",
+            `${name} saved successfully`
+          );
+        }
+
+        editingQuestIndex = null;
+        setQuestModalMode("create");
+        Utils.saveGame();
+        updateStats();
+        closeModal("quest-modal");
+
+        // Reset form
+        document.getElementById("quest-name").value = "";
+        document.getElementById("quest-exp").value = 20;
+        document.getElementById("quest-gold").value = 10;
+        document.getElementById("quest-category").value = "health";
+        updateRangeValue("quest-exp", "exp-value");
+        updateRangeValue("quest-gold", "gold-value");
+      }
+
+      function showToast(type, title, message) {
+        const container = document.getElementById("toast-container");
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+
+        const icon =
+          type === "achievement"
+            ? "🏆"
+            : type === "success"
+            ? "✅"
+            : type === "error"
+            ? "❌"
+            : "ℹ️";
+
+        toast.innerHTML = `
+          <div class="toast-icon">${icon}</div>
+          <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message.replace(/\n/g, "<br>")}</div>
+          </div>
+        `;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.animation = "slideIn 0.3s ease-out reverse";
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      // ================= CORE LOGIC =================
+      function updateStats() {
+        player.maxHp = Utils.calculateMaxHp(player.vit);
+        if (player.hp > player.maxHp) player.hp = player.maxHp;
+
+        // Update UI
+        ["lvl", "stage"].forEach((id) =>
+          Utils.updateElement(`${id}-txt`, player[id])
+        );
+        ["str", "agi", "vit"].forEach((stat) =>
+          Utils.updateElement(`${stat}-txt`, player[stat].toFixed(1))
+        );
+
+        Utils.updateBar("hp-bar", "hp-txt", player.hp, player.maxHp);
+        Utils.updateBar("exp-bar", "exp-txt", player.exp, player.maxExp);
+
+        // Update gold and streak
+        Utils.updateElement("gold-txt", player.gold || 0);
+        Utils.updateElement("streak-txt", player.streak || 0);
+
+        Utils.saveGame();
+        renderQuests();
+      }
+
+      function doTask(type) {
+        const task = CONFIG.TASKS[type];
+        if (!task) return;
+
+        // Check if already completed today (for daily quests only)
+        const taskKey = type;
+        if (Utils.isCompletedToday(taskKey)) {
+          showToast(
+            "info",
+            "✅ Already Completed",
+            "You've already done this quest today. Come back tomorrow!"
+          );
+          return;
+        }
+
+        // Apply stat changes (skip hpCost - HP is for battles only)
+        Object.entries(task).forEach(([key, val]) => {
+          if (key === "hpCost") return; // Skip HP cost
+          if (key === "gold") player.gold = (player.gold || 0) + val;
+          else if (key in player) player[key] += val;
+        });
+
+        Utils.markCompleted(taskKey);
+
+        // Check for first quest achievement
+        if (!player.achievements || player.achievements.length === 0) {
+          unlockAchievement("first_quest");
+        }
+        
+        // Check for daily quest count achievement
+        checkDailyQuestAchievements();
+        
+        // Check for early bird achievement (before 9 AM)
+        const currentHour = new Date().getHours();
+        if (currentHour < 9) {
+          unlockAchievement("early_bird");
+        }
+
+        checkLevelUp();
+        updateStats();
+
+        // Show reward notification
+        const rewards = [];
+        if (task.exp) rewards.push(`+${task.exp} EXP`);
+        if (task.gold) rewards.push(`+${task.gold} Gold`);
+        showToast("success", "✨ Quest Complete!", rewards.join(" | "));
+      }
+
+      function doCustomQuest(index) {
+        if (!player.customQuests || !player.customQuests[index]) return;
+
+        const quest = player.customQuests[index];
+        const taskKey = "custom_" + index;
+
+        if (Utils.isCompletedToday(taskKey)) {
+          showToast(
+            "info",
+            "✅ Already Completed",
+            "You've already done this quest today!"
+          );
+          return;
+        }
+
+        // Apply rewards (HP cost removed - HP is for battles only)
+        player.exp += quest.exp;
+        player.gold += quest.gold;
+
+        // Apply stat bonus
+        if (quest.stat && player[quest.stat] !== undefined) {
+          player[quest.stat] += 0.2;
+        }
+
+        Utils.markCompleted(taskKey);
+        
+        // Check for daily quest count and early bird achievements
+        checkDailyQuestAchievements();
+        const currentHour = new Date().getHours();
+        if (currentHour < 9) {
+          unlockAchievement("early_bird");
+        }
+        
+        checkLevelUp();
+        updateStats();
+
+        showToast(
+          "success",
+          "✨ Custom Quest Complete!",
+          `+${quest.exp} EXP | +${quest.gold} Gold`
+        );
+      }
+
+      function checkLevelUp() {
+        if (player.exp >= player.maxExp) {
+          player.lvl++;
+          player.exp -= player.maxExp;
+          player.maxExp = Math.floor(player.maxExp * CONFIG.PLAYER.EXP_MULT);
+          ["str", "agi", "vit"].forEach((stat) => player[stat]++);
+          player.hp = player.maxHp;
+          player.gold += player.lvl * 10;
+
+          // Check level achievements
+          if (player.lvl === 3) unlockAchievement("level_3");
+          if (player.lvl === 5) unlockAchievement("level_5");
+          if (player.lvl === 10) unlockAchievement("level_10");
+
+          showToast(
+            "achievement",
+            "🎉 LEVEL UP!",
+            `Level ${player.lvl}\nAll Stats +1\n+${player.lvl * 10} Gold`
+          );
+        }
+
+        // Check gold achievement
+        if (player.gold >= 100) unlockAchievement("gold_100");
+        if (player.gold >= 500) unlockAchievement("gold_500");
+      }
+
+      function checkDailyQuestAchievements() {
+        const today = Utils.getTodayKey();
+        const todayQuests = (player.completedToday || []).filter(entry => 
+          entry.endsWith("_" + today)
+        );
+        
+        if (todayQuests.length >= 5) {
+          unlockAchievement("quest_5_day");
+        }
+      }
+
+      function goodRest() {
+        const today = Utils.getTodayKey();
+        
+        // ตรวจสอบว่าพักผ่อนไปแล้ววันนี้หรือยัง
+        if (player.restedToday === today) {
+          showToast(
+            "error",
+            "😴 Already Rested",
+            "You can only rest once per day. Come back tomorrow!"
+          );
+          return;
+        }
+        
+        // Full heal
+        player.hp = player.maxHp;
+        player.restedToday = today;
+        
+        // Track good rest count for achievement
+        if (!player.goodRestCount) player.goodRestCount = 0;
+        player.goodRestCount++;
+        
+        // Check achievement
+        if (player.goodRestCount >= 7) unlockAchievement("good_rest");
+        
+        updateStats();
+        updateRestButtons();
+        Utils.saveGame();
+        
+        showToast(
+          "success",
+          "⛺ Good Rest Complete!",
+          "HP fully restored! You slept well. 💪"
+        );
+      }
+
+      function badRest() {
+        const today = Utils.getTodayKey();
+        
+        // ตรวจสอบว่าพักผ่อนไปแล้ววันนี้หรือยัง
+        if (player.restedToday === today) {
+          showToast(
+            "error",
+            "😴 Already Rested",
+            "You can only rest once per day. Come back tomorrow!"
+          );
+          return;
+        }
+        
+        // Partial heal (40% of max HP)
+        const healAmount = Math.floor(player.maxHp * 0.4);
+        player.hp = Math.min(player.hp + healAmount, player.maxHp);
+        player.restedToday = today;
+        
+        updateStats();
+        updateRestButtons();
+        Utils.saveGame();
+        
+        showToast(
+          "warning",
+          "😵 Bad Rest...",
+          `Restored only ${healAmount} HP. Try to sleep better! 😔`
+        );
+      }
+
+      function updateRestButtons() {
+        const today = Utils.getTodayKey();
+        const alreadyRested = player.restedToday === today;
+        
+        const goodRestBtn = document.getElementById("btn-good-rest");
+        const badRestBtn = document.getElementById("btn-bad-rest");
+        
+        if (goodRestBtn) {
+          goodRestBtn.disabled = alreadyRested;
+          if (alreadyRested) {
+            goodRestBtn.innerHTML = `⛺ GOOD REST<small>✅ ALREADY RESTED TODAY</small>`;
+          } else {
+            goodRestBtn.innerHTML = `⛺ GOOD REST<small>😴 FULL HP RESTORE | 🌙 SLEPT WELL (8h+)</small>`;
+          }
+        }
+        
+        if (badRestBtn) {
+          badRestBtn.disabled = alreadyRested;
+          if (alreadyRested) {
+            badRestBtn.innerHTML = `😵 BAD REST<small>✅ ALREADY RESTED TODAY</small>`;
+          } else {
+            badRestBtn.innerHTML = `😵 BAD REST<small>💤 PARTIAL HP | 😫 POOR SLEEP</small>`;
+          }
+        }
+      }
+
+      function openShop() {
+        openModal("shop-modal");
+      }
+
+      function openAchievements() {
+        renderAchievements();
+        openModal("achievement-modal");
+      }
+
+      function renderAchievements() {
+        const container = document.getElementById("achievement-list");
+        const countEl = document.getElementById("achievement-count");
+        const totalEl = document.getElementById("achievement-total");
+        
+        if (!container) return;
+        
+        const achievements = CONFIG.ACHIEVEMENTS;
+        const unlocked = player.achievements || [];
+        
+        countEl.innerText = unlocked.length;
+        totalEl.innerText = achievements.length;
+        
+        let html = "";
+        
+        // Show unlocked first, then locked
+        const sorted = [...achievements].sort((a, b) => {
+          const aUnlocked = unlocked.includes(a.id);
+          const bUnlocked = unlocked.includes(b.id);
+          if (aUnlocked && !bUnlocked) return -1;
+          if (!aUnlocked && bUnlocked) return 1;
+          return 0;
+        });
+        
+        sorted.forEach(ach => {
+          const isUnlocked = unlocked.includes(ach.id);
+          const statusClass = isUnlocked ? "unlocked" : "locked";
+          const statusIcon = isUnlocked ? "✅" : "🔒";
+          const rewardText = ach.reward > 0 ? ` (+${ach.reward}G)` : "";
+          
+          html += `
+            <div class="achievement-item ${statusClass}">
+              <div class="achievement-icon">${isUnlocked ? "🏆" : "❓"}</div>
+              <div class="achievement-info">
+                <div class="achievement-name">${ach.name}${rewardText}</div>
+                <div class="achievement-desc">${ach.desc}</div>
+              </div>
+              <div class="achievement-status">${statusIcon}</div>
+            </div>
+          `;
+        });
+        
+        container.innerHTML = html;
+      }
+
+      function checkBossAchievements() {
+        if (player.stage >= 2) unlockAchievement("boss_1");
+        if (player.stage >= 5) unlockAchievement("boss_5");
+        if (player.stage >= 10) unlockAchievement("boss_10");
+        if (player.stage >= 20) unlockAchievement("boss_20");
+      }
+
+      async function reloadData() {
+        showToast("info", "🔄 Syncing...", "Loading data from cloud...");
+        
+        const loaded = await FirebaseService.loadPlayerSnapshot();
+        
+        if (loaded) {
+          gameReady = true;
+          Utils.checkStreak();
+          updateStats();
+          updateRestButtons();
+          showToast("success", "✅ Synced!", "Data loaded successfully!");
+        } else {
+          showToast("error", "❌ Sync Failed", "Could not load data from cloud");
+        }
+      }
+
+      function confirmReset() {
+        if (confirm("⚠️ Are you sure you want to RESET ALL DATA?\n\nThis will delete:\n- All stats (Level, STR, AGI, VIT)\n- All gold and items\n- All custom quests\n- All achievements\n- All progress\n\nThis action CANNOT be undone!")) {
+          if (confirm("🔴 FINAL WARNING!\n\nType 'RESET' in your mind and click OK to confirm.")) {
+            resetGame();
+          }
+        }
+      }
+
+      async function resetGame() {
+        // Reset to initial values
+        player = { ...CONFIG.PLAYER.INITIAL };
+        
+        // Save to Firebase
+        gameReady = true;
+        await FirebaseService.savePlayerSnapshot();
+        
+        // Update UI
+        updateStats();
+        updateRestButtons();
+        
+        showToast("success", "🔄 Game Reset!", "All data has been reset to default.");
+        console.log("Game has been reset to default values");
+      }
+
+      function buyItem(itemKey) {
+        const item = CONFIG.SHOP_ITEMS[itemKey];
+        if (!item) return;
+
+        if (player.gold < item.price) {
+          showToast(
+            "error",
+            "❌ Not Enough Gold",
+            `You need ${item.price - player.gold} more gold.`
+          );
+          return;
+        }
+
+        player.gold -= item.price;
+
+        // Apply item effect
+        switch (item.effect) {
+          case "hp":
+            player.hp = Math.min(player.maxHp, player.hp + item.value);
+            showToast("success", "🧪 Item Used", `Restored ${item.value} HP!`);
+            break;
+          case "str":
+          case "agi":
+          case "vit":
+            player[item.effect] += item.value;
+            showToast(
+              "success",
+              "📚 Stat Increased",
+              `${item.effect.toUpperCase()} +${item.value}!`
+            );
+            break;
+          case "exp":
+            player.exp += item.value;
+            checkLevelUp();
+            showToast("success", "📜 EXP Gained", `+${item.value} EXP!`);
+            break;
+        }
+
+        updateStats();
+        renderShop();
+      }
+
+      function addCustomQuest() {
+        editingQuestIndex = null;
+        setQuestModalMode("create");
+        openModal("quest-modal");
+      }
+
+      function editCustomQuest(index) {
+        if (!player.customQuests || !player.customQuests[index]) return;
+        const quest = player.customQuests[index];
+        editingQuestIndex = index;
+        setQuestModalMode("edit");
+
+        document.getElementById("quest-name").value = quest.name;
+        document.getElementById("quest-category").value = quest.category;
+        document.getElementById("quest-exp").value = quest.exp;
+        document.getElementById("quest-gold").value = quest.gold;
+        document.getElementById("quest-hp").value = quest.hpCost;
+        updateRangeValue("quest-exp", "exp-value");
+        updateRangeValue("quest-gold", "gold-value");
+        updateRangeValue("quest-hp", "hp-value");
+        openModal("quest-modal");
+      }
+
+      function deleteCustomQuest(index) {
+        if (!player.customQuests || !player.customQuests[index]) return;
+        const confirmDelete = confirm("ลบเควสต์นี้ใช่ไหม?");
+        if (!confirmDelete) return;
+        const [removed] = player.customQuests.splice(index, 1);
+        editingQuestIndex = null;
+        Utils.saveGame();
+        updateStats();
+        showToast("success", "🗑️ Quest Deleted", `${removed.name} removed`);
+      }
+
+      function renderQuests() {
+        const container = document.getElementById("quests-container");
+        if (!container) return;
+
+        let html = "";
+
+        // Group tasks by category
+        const categories = {};
+        Object.entries(CONFIG.TASKS).forEach(([key, task]) => {
+          if (!categories[task.cat]) categories[task.cat] = [];
+          categories[task.cat].push({ key, ...task });
+        });
+
+        // Render each category
+        Object.entries(categories).forEach(([catKey, tasks]) => {
+          const catInfo = CONFIG.QUEST_CATEGORIES[catKey];
+          html += `<div class="quest-category">`;
+          html += `<h3>${catInfo.icon} ${catKey.toUpperCase()}</h3>`;
+
+          tasks.forEach((task) => {
+            const completed = Utils.isCompletedToday(task.key);
+            const btnClass = completed ? "btn btn-completed" : "btn";
+            const btnText = completed
+              ? "✅ COMPLETED"
+              : task.name.toUpperCase();
+
+            html += `<button class="${btnClass}" onclick="doTask('${
+              task.key
+            }')" ${completed ? "disabled" : ""}>
+              ${catInfo.icon} ${btnText}
+              <small>⭐ +${task.exp} EXP | 💰 +${task.gold}G</small>
+            </button>`;
+          });
+
+          html += "</div>";
+        });
+
+        // Custom quests
+        if (player.customQuests && player.customQuests.length > 0) {
+          html += `<div class="quest-category"><h3>✨ CUSTOM QUESTS</h3>`;
+          player.customQuests.forEach((quest, i) => {
+            const completed = Utils.isCompletedToday("custom_" + i);
+            const catInfo = CONFIG.QUEST_CATEGORIES[quest.category];
+            const btnClass = completed ? "btn btn-completed" : "btn";
+            const btnText = completed
+              ? "✅ COMPLETED"
+              : quest.name.toUpperCase();
+
+            html += `<div class="custom-quest-row">
+              <button class="${btnClass}" onclick="doCustomQuest(${i})" ${
+              completed ? "disabled" : ""
+            }>
+                ${catInfo.icon} ${btnText}
+                <small>⭐ +${quest.exp} EXP | 💰 +${quest.gold}G</small>
+              </button>
+              <div class="quest-actions">
+                <button class="quest-action-btn" onclick="editCustomQuest(${i})">✏️ Edit</button>
+                <button class="quest-action-btn danger" onclick="deleteCustomQuest(${i})">🗑️ Delete</button>
+              </div>
+            </div>`;
+          });
+          html += "</div>";
+        }
+
+        container.innerHTML = html;
+      }
+
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const uiLayer = document.getElementById("ui-layer");
+      const battleLayer = document.getElementById("battle-layer");
+      const msgBox = document.getElementById("battle-msg");
+
+      // Responsive canvas setup
+      let isMobileLayout = window.innerWidth < 768;
+      
+      function setupCanvas() {
+        isMobileLayout = window.innerWidth < 768;
+        
+        if (isMobileLayout) {
+          canvas.width = CONFIG.CANVAS.MOBILE_WIDTH;
+          canvas.height = CONFIG.CANVAS.MOBILE_HEIGHT;
+        } else {
+          canvas.width = CONFIG.CANVAS.WIDTH;
+          canvas.height = CONFIG.CANVAS.HEIGHT;
+        }
+        
+        updateBattlePositions();
+      }
+      
+      function updateBattlePositions() {
+        // Guard: only update if objects exist
+        if (typeof heroObj === 'undefined' || typeof monsterObj === 'undefined') return;
+        
+        if (isMobileLayout) {
+          // Mobile: Vertical layout (hero bottom, monster top)
+          heroObj.x = canvas.width / 2 - 40;
+          heroObj.y = canvas.height - 140;
+          heroObj.scale = 2.5;
+          heroObj.originalX = heroObj.x;
+          heroObj.originalY = heroObj.y;
+          
+          monsterObj.x = canvas.width / 2 - 50;
+          monsterObj.y = 60;
+          monsterObj.scale = 3;
+          monsterObj.originalX = monsterObj.x;
+          monsterObj.originalY = monsterObj.y;
+        } else {
+          // Desktop: Horizontal layout (hero left, monster right)
+          heroObj.x = 100;
+          heroObj.y = 160;
+          heroObj.scale = 3;
+          heroObj.originalX = 100;
+          heroObj.originalY = 160;
+          
+          monsterObj.x = 550;
+          monsterObj.y = 180;
+          monsterObj.scale = 4;
+          monsterObj.originalX = 550;
+          monsterObj.originalY = 180;
+        }
+      }
+      
+      // Initial canvas size setup (positions will be set in startBattle)
+      isMobileLayout = window.innerWidth < 768;
+      if (isMobileLayout) {
+        canvas.width = CONFIG.CANVAS.MOBILE_WIDTH;
+        canvas.height = CONFIG.CANVAS.MOBILE_HEIGHT;
+      } else {
+        canvas.width = CONFIG.CANVAS.WIDTH;
+        canvas.height = CONFIG.CANVAS.HEIGHT;
+      }
+      window.addEventListener('resize', setupCanvas);
+
+      let battleState = "idle";
+      let frame = 0;
+      let particles = [];
+      let floatingTexts = [];
+      let shakeStrength = 0;
+      let comboCounter = 0;
+      let backgroundOffset = 0;
+      let criticalHit = false;
+
+      // Battle stats
+      const battleStats = {
+        totalDamage: 0,
+        hitsLanded: 0,
+        criticalHits: 0,
+      };
+
+      // ===== NEW HERO SPRITE (Chibi Knight Style) =====
+      // Color Palette Mapping for this sprite:
+      // 1 = Armor Light Silver (ส่วนสว่างของเกราะ)
+      // 5 = BLACK Outlines & Visor (เส้นขอบดำและช่องมอง) <- สำคัญมากสำหรับลุคนี้
+      // 6 = Red (พู่บนหัว, ผ้าพันคอ, ด้ามดาบ)
+      // 7 = Armor Dark Grey (ส่วนเงาของเกราะ)
+      // 8 = White Sword Blade (ใบดาบสีขาว)
+
+      const SPRITE_HERO = [
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ], // Top plume outline
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 6, 6, 6, 5, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ], // Red plume
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 6, 6, 6, 6, 6, 5, 0, 0, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 5, 6, 6, 6, 6, 6, 6, 6, 5, 5, 5, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 0, 0, 0, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 0, 0, 0,
+          0,
+        ], // Helmet top
+        [
+          0, 0, 0, 0, 0, 0, 5, 1, 1, 8, 8, 1, 1, 1, 1, 1, 1, 7, 7, 5, 0, 0, 0,
+          0,
+        ], // Helmet highlight/shading
+        [
+          0, 0, 0, 0, 0, 5, 1, 1, 8, 8, 1, 1, 1, 1, 1, 1, 7, 7, 7, 5, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 0, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7, 7, 7, 7, 5, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0,
+          0,
+        ], // Visor top rim
+        [
+          0, 0, 0, 0, 5, 1, 1, 5, 5, 1, 1, 5, 5, 1, 1, 5, 5, 7, 7, 5, 0, 0, 0,
+          0,
+        ], // Visor slits (black)
+        [
+          0, 0, 0, 0, 5, 1, 1, 5, 5, 1, 1, 5, 5, 1, 1, 5, 5, 7, 7, 5, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 5, 1, 1, 5, 5, 1, 1, 5, 5, 1, 1, 5, 5, 7, 7, 5, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 5, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 7, 7, 7, 7, 5, 0, 0, 0,
+          0,
+        ], // Helmet bottom rim
+        [
+          0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 0, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 0, 0, 0, 0, 0,
+          0,
+        ], // Red Scarf
+        [
+          0, 0, 0, 0, 0, 0, 5, 5, 6, 6, 6, 6, 6, 6, 6, 5, 5, 0, 0, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          5, 5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 1, 7, 7, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ], // Sword blade tip & Body top
+        [
+          5, 8, 8, 8, 8, 8, 8, 6, 6, 1, 1, 1, 7, 7, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ], // Sword blade & Hilt & Body
+        [
+          5, 8, 8, 8, 8, 8, 8, 6, 6, 1, 1, 1, 7, 7, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          5, 5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 1, 7, 7, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ], // Sword bottom & Body bottom
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 7, 7, 7, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ], // Feet/Shadow
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ],
+        [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0,
+        ],
+      ];
+
+      // ===== MONSTER SPRITES (Multiple Types) =====
+
+      // 1. SLIME (Enhanced 16x16)
+      const SPRITE_SLIME = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 1, 8, 1, 1, 1, 1, 8, 1, 0, 0, 0, 0],
+        [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+        [0, 1, 1, 2, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 0, 0], // Eyes with white
+        [0, 1, 1, 2, 5, 1, 1, 1, 1, 1, 2, 5, 1, 1, 0, 0], // Pupils
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [1, 1, 1, 1, 1, 7, 7, 7, 7, 7, 1, 1, 1, 1, 1, 0], // Mouth
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+        [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0],
+        [0, 0, 0, 7, 1, 1, 1, 1, 1, 1, 1, 1, 7, 0, 0, 0],
+        [0, 0, 0, 0, 7, 7, 7, 7, 7, 7, 7, 7, 0, 0, 0, 0],
+      ];
+
+      // 2. GOBLIN WARRIOR (18x18)
+      const SPRITE_GOBLIN = [
+        [0, 0, 0, 0, 0, 0, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 9, 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0],
+        [0, 0, 0, 9, 9, 8, 9, 9, 9, 9, 9, 8, 9, 9, 0, 0, 0, 0], // Ears
+        [0, 0, 0, 9, 3, 3, 3, 3, 3, 3, 3, 3, 3, 9, 0, 0, 0, 0], // Green skin
+        [0, 0, 0, 9, 3, 8, 5, 3, 3, 3, 8, 5, 3, 9, 0, 0, 0, 0], // Eyes angry
+        [0, 0, 0, 0, 3, 3, 3, 3, 5, 3, 3, 3, 3, 0, 0, 0, 0, 0], // Nose
+        [0, 0, 0, 0, 3, 3, 6, 6, 6, 6, 6, 3, 3, 0, 0, 0, 0, 0], // Mouth/teeth
+        [0, 0, 0, 9, 9, 3, 3, 3, 3, 3, 3, 3, 9, 9, 0, 0, 0, 0],
+        [0, 0, 9, 7, 7, 7, 9, 9, 9, 9, 9, 7, 7, 7, 9, 0, 0, 0], // Armor
+        [0, 0, 9, 7, 4, 7, 7, 9, 9, 9, 7, 7, 4, 7, 9, 0, 0, 0],
+        [0, 0, 0, 9, 7, 7, 9, 9, 9, 9, 9, 7, 7, 9, 0, 0, 0, 0],
+        [0, 0, 0, 0, 9, 9, 9, 7, 7, 7, 9, 9, 9, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 9, 9, 0, 0, 0, 0, 0, 9, 9, 0, 0, 0, 0, 0], // Legs
+        [0, 0, 0, 0, 9, 9, 0, 0, 0, 0, 0, 9, 9, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 5, 5, 0, 0, 0, 0, 0, 5, 5, 0, 0, 0, 0, 0],
+      ];
+
+      // 3. SKELETON WARRIOR (20x20)
+      const SPRITE_SKELETON = [
+        [0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 5, 8, 8, 8, 8, 5, 8, 8, 0, 0, 0, 0, 0, 0], // Eyes
+        [0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 8, 8, 5, 5, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0], // Nose
+        [0, 0, 0, 0, 0, 8, 5, 5, 5, 5, 5, 5, 8, 0, 0, 0, 0, 0, 0, 0], // Teeth
+        [0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 7, 7, 7, 8, 8, 8, 8, 8, 8, 7, 7, 7, 0, 0, 0, 0, 0], // Shoulders armor
+        [0, 0, 7, 7, 4, 7, 7, 8, 8, 8, 8, 7, 7, 4, 7, 7, 0, 0, 0, 0],
+        [0, 0, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 7, 7, 7, 7, 0, 0, 0, 0],
+        [0, 0, 0, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 7, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 0, 8, 8, 8, 0, 8, 8, 0, 0, 0, 0, 0, 0, 0], // Rib cage
+        [0, 0, 0, 0, 8, 8, 0, 8, 8, 8, 0, 8, 8, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 8, 8, 0, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 0, 0], // Legs
+        [0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 8, 8, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 5, 5, 0, 0, 0, 0, 0, 5, 5, 0, 0, 0, 0, 0, 0, 0],
+      ];
+
+      // 4. DEMON BOSS (22x22) - For higher levels
+      const SPRITE_DEMON = [
+        [0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6, 0, 0, 0, 0, 0], // Horns
+        [0, 0, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 6, 0, 0, 0, 0],
+        [0, 0, 6, 7, 7, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 6, 0, 0, 0, 0],
+        [0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0],
+        [0, 0, 0, 6, 8, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 6, 0, 0, 0, 0, 0, 0], // Eyes glow
+        [0, 0, 0, 6, 4, 5, 6, 6, 6, 6, 6, 6, 6, 4, 5, 6, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 6, 6, 6, 6, 5, 5, 5, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0], // Nose
+        [0, 0, 0, 0, 6, 6, 8, 8, 8, 8, 8, 8, 8, 6, 6, 0, 0, 0, 0, 0, 0, 0], // Teeth
+        [0, 0, 0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 6, 6, 7, 7, 7, 6, 6, 6, 6, 6, 7, 7, 7, 6, 6, 0, 0, 0, 0, 0], // Shoulders
+        [0, 6, 6, 7, 7, 4, 7, 7, 6, 6, 6, 7, 7, 4, 7, 7, 6, 6, 0, 0, 0, 0],
+        [0, 6, 7, 7, 4, 4, 4, 7, 7, 6, 7, 7, 4, 4, 4, 7, 7, 6, 0, 0, 0, 0], // Armor
+        [0, 0, 6, 7, 7, 7, 7, 7, 6, 6, 6, 7, 7, 7, 7, 7, 6, 0, 0, 0, 0, 0],
+        [0, 0, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 6, 6, 6, 6, 0, 0, 0, 0, 0, 6, 6, 6, 6, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0], // Legs
+        [0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0],
+      ];
+
+      // Monster Pool - Select based on stage
+      const MONSTER_TYPES = [
+        { name: "Slime", sprite: SPRITE_SLIME, color: "#2ecc71", scale: 4 },
+        { name: "Goblin", sprite: SPRITE_GOBLIN, color: "#27ae60", scale: 4 },
+        {
+          name: "Skeleton",
+          sprite: SPRITE_SKELETON,
+          color: "#ecf0f1",
+          scale: 3.5,
+        },
+        { name: "Demon", sprite: SPRITE_DEMON, color: "#c0392b", scale: 3.5 },
+      ];
+
+      let heroObj = {
+        x: 100,
+        y: 160,
+        scale: 3,
+        color: "#5dade2",
+        hp: 0,
+        maxHp: 0,
+        originalX: 100,
+        originalY: 160,
+      };
+
+      let monsterObj = {
+        x: 550,
+        y: 180,
+        scale: 4,
+        color: "#e74c3c",
+        hp: 0,
+        maxHp: 0,
+        sprite: SPRITE_SLIME,
+        name: "Monster",
+        originalX: 550,
+        originalY: 180,
+      };
+
+      // ===== COLOR PALETTE =====
+      const COLOR_PALETTE = {
+        1: "#bdc3c7", // Silver Armor
+        2: "#ffccaa", // Skin
+        3: "#7cb342", // Green
+        4: "#ffd700", // Gold
+        5: "#000000", // Black (Outlines/Visor)
+        6: "#e74c3c", // Red
+        7: "#7f8c8d", // Dark Grey Armor
+        8: "#ffffff", // White
+        9: "#8b4513", // Brown
+      };
+
+      const getColor = (val, fallback) => COLOR_PALETTE[val] || fallback;
+
+      // ===== ENHANCED DRAW SPRITE FUNCTION =====
+      function drawSprite(ctx, sprite, obj, isFlip = false) {
+        let size = obj.scale;
+
+        // Add breathing animation
+        let breathe = Math.sin(frame * 0.08) * 1.5;
+
+        for (let r = 0; r < sprite.length; r++) {
+          for (let c = 0; c < sprite[r].length; c++) {
+            let val = sprite[r][c];
+            if (val !== 0) {
+              ctx.fillStyle = getColor(val, obj.color);
+
+              let drawX = isFlip
+                ? obj.x + (sprite[0].length - 1 - c) * size
+                : obj.x + c * size;
+              let drawY = obj.y + r * size;
+
+              // Idle animation - subtle bounce
+              drawY += Math.sin(frame * 0.1 + c * 0.1) * 2 + breathe;
+
+              ctx.fillRect(drawX, drawY, size, size);
+
+              // Add pixel highlights for shiny effect
+              if (val === 8 || val === 4) {
+                ctx.fillStyle = "rgba(255,255,255,0.3)";
+                ctx.fillRect(drawX, drawY, size * 0.5, size * 0.5);
+              }
+            }
+          }
+        }
+
+        // Enhanced shadow with gradient
+        let gradient = ctx.createRadialGradient(
+          obj.x + (sprite[0].length * size) / 2,
+          obj.y + sprite.length * size + 8,
+          0,
+          obj.x + (sprite[0].length * size) / 2,
+          obj.y + sprite.length * size + 8,
+          sprite[0].length * size * 0.6
+        );
+        gradient.addColorStop(0, "rgba(0,0,0,0.4)");
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        let shadowWidth = sprite[0].length * size * 0.8;
+        let centerX = obj.x + (sprite[0].length * size) / 2;
+        ctx.ellipse(
+          centerX,
+          obj.y + sprite.length * size + 8,
+          shadowWidth / 2,
+          8,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+
+        // Enhanced HP Bar with 3D effect
+        let hpPer = Math.max(0, obj.hp / obj.maxHp);
+        let barWidth = sprite[0].length * size;
+        let barHeight = 8;
+        let barY = obj.y - 20;
+
+        // Bar background
+        ctx.fillStyle = "#000";
+        ctx.fillRect(obj.x - 2, barY - 2, barWidth + 4, barHeight + 4);
+
+        // Bar container
+        ctx.fillStyle = "#2c3e50";
+        ctx.fillRect(obj.x, barY, barWidth, barHeight);
+
+        // HP fill with gradient
+        let hpGradient = ctx.createLinearGradient(
+          obj.x,
+          barY,
+          obj.x,
+          barY + barHeight
+        );
+        if (hpPer > 0.5) {
+          hpGradient.addColorStop(0, "#2ecc71");
+          hpGradient.addColorStop(1, "#27ae60");
+        } else if (hpPer > 0.25) {
+          hpGradient.addColorStop(0, "#f39c12");
+          hpGradient.addColorStop(1, "#e67e22");
+        } else {
+          hpGradient.addColorStop(0, "#e74c3c");
+          hpGradient.addColorStop(1, "#c0392b");
+        }
+
+        ctx.fillStyle = hpGradient;
+        ctx.fillRect(
+          obj.x + 2,
+          barY + 2,
+          (barWidth - 4) * hpPer,
+          barHeight - 4
+        );
+
+        // Shine effect on HP bar
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+        ctx.fillRect(
+          obj.x + 2,
+          barY + 2,
+          (barWidth - 4) * hpPer,
+          (barHeight - 4) * 0.4
+        );
+
+        // HP Text - smaller on mobile
+        const hpFontSize = isMobileLayout ? 7 : 10;
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${hpFontSize}px 'Press Start 2P'`;
+        ctx.textAlign = "center";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = isMobileLayout ? 2 : 3;
+        let hpText = Math.ceil(obj.hp) + "/" + obj.maxHp;
+        ctx.strokeText(hpText, obj.x + barWidth / 2, barY + barHeight - 1);
+        ctx.fillText(hpText, obj.x + barWidth / 2, barY + barHeight - 1);
+
+        // Monster name tag
+        if (obj.name) {
+          const nameFontSize = isMobileLayout ? 6 : 8;
+          ctx.font = `${nameFontSize}px 'Press Start 2P'`;
+          ctx.fillStyle = "#ffd700";
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = isMobileLayout ? 1 : 2;
+          ctx.strokeText(obj.name, obj.x + barWidth / 2, barY - 8);
+          ctx.fillText(obj.name, obj.x + barWidth / 2, barY - 8);
+        }
+
+        ctx.textAlign = "left";
+      }
+
+      // ===== PARTICLE SYSTEM =====
+      class Particle {
+        constructor(x, y, color, type = "normal") {
+          this.x = x;
+          this.y = y;
+          this.type = type;
+
+          if (type === "slash") {
+            this.vx = (Math.random() - 0.5) * 8;
+            this.vy = (Math.random() - 0.5) * 8;
+            this.size = Math.random() * 15 + 10;
+            this.rotation = Math.random() * Math.PI * 2;
+            this.rotSpeed = (Math.random() - 0.5) * 0.5;
+          } else if (type === "spark") {
+            this.vx = (Math.random() - 0.5) * 20;
+            this.vy = Math.random() * -15 - 5;
+            this.size = Math.random() * 3 + 2;
+            this.rotation = 0;
+            this.rotSpeed = 0;
+          } else {
+            this.vx = (Math.random() - 0.5) * 12;
+            this.vy = (Math.random() - 0.5) * 12 - 3;
+            this.size = Math.random() * 6 + 3;
+            this.rotation = Math.random() * Math.PI * 2;
+            this.rotSpeed = (Math.random() - 0.5) * 0.3;
+          }
+
+          this.life = 1.0;
+          this.color = color;
+          this.gravity = type === "spark" ? 0.8 : 0.3;
+        }
+
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vy += this.gravity;
+          this.rotation += this.rotSpeed;
+          this.life -= this.type === "slash" ? 0.02 : 0.04;
+          this.vx *= 0.98;
+        }
+
+        draw(ctx) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, this.life);
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.rotation);
+
+          if (this.type === "slash") {
+            // Draw slash effect
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = this.size / 3;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(-this.size, 0);
+            ctx.lineTo(this.size, 0);
+            ctx.stroke();
+
+            // Glow effect
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+            ctx.stroke();
+          } else if (this.type === "spark") {
+            // Draw spark
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
+            gradient.addColorStop(0, this.color);
+            gradient.addColorStop(1, "transparent");
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // Draw normal particle
+            ctx.fillStyle = this.color;
+            ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+            ctx.fillStyle = "rgba(255,255,255,0.6)";
+            ctx.fillRect(
+              -this.size / 4,
+              -this.size / 4,
+              this.size / 2,
+              this.size / 2
+            );
+          }
+
+          ctx.restore();
+        }
+      }
+
+      class FloatingText {
+        constructor(text, x, y, color, isCritical = false) {
+          Object.assign(this, {
+            text,
+            x,
+            y,
+            color,
+            vy: -3,
+            life: 1.0,
+            scale: 0,
+          });
+          this.isCritical = isCritical;
+          this.wobble = 0;
+        }
+
+        update() {
+          this.y += this.vy;
+          this.vy *= 0.95;
+          this.life -= 0.015;
+          if (this.scale < 1) this.scale += 0.15;
+          if (this.isCritical) this.wobble += 0.3;
+        }
+
+        draw(ctx) {
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, this.life);
+          ctx.translate(this.x, this.y);
+
+          if (this.isCritical) {
+            ctx.scale(this.scale * 1.5, this.scale * 1.5);
+            ctx.rotate(Math.sin(this.wobble) * 0.1);
+          } else {
+            ctx.scale(this.scale, this.scale);
+          }
+
+          // Smaller font on mobile
+          const baseFontSize = isMobileLayout ? 16 : 24;
+          const criticalFontSize = isMobileLayout ? 22 : 32;
+          const fontSize = this.isCritical ? criticalFontSize : baseFontSize;
+          ctx.font = `bold ${fontSize}px 'Press Start 2P'`;
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = this.isCritical ? 6 : 5;
+          ctx.strokeText(this.text, 0, 0);
+
+          ctx.fillStyle = this.color;
+          ctx.shadowColor = this.color;
+          ctx.shadowBlur = this.isCritical ? 20 : 10;
+          ctx.fillText(this.text, 0, 0);
+
+          if (this.isCritical) {
+            // Add extra glow
+            ctx.shadowBlur = 30;
+            ctx.fillText(this.text, 0, 0);
+          }
+
+          ctx.restore();
+        }
+      }
+
+      const createExplosion = (x, y, color, isCritical = false) => {
+        const count = isCritical ? 40 : 25;
+        const sparkCount = isCritical ? 20 : 10;
+
+        for (let i = 0; i < count; i++) {
+          particles.push(new Particle(x, y, color, "normal"));
+        }
+        for (let i = 0; i < sparkCount; i++) {
+          particles.push(new Particle(x, y, "#fff", "spark"));
+        }
+
+        // Add slash effects
+        if (isCritical) {
+          for (let i = 0; i < 5; i++) {
+            particles.push(new Particle(x, y, color, "slash"));
+          }
+        }
+      };
+
+      const createSlashEffect = (x, y, color) => {
+        for (let i = 0; i < 8; i++) {
+          particles.push(new Particle(x, y, color, "slash"));
+        }
+      };
+
+      // ===== BATTLE SYSTEM =====
+      const BattleSystem = {
+        selectMonster(stage) {
+          const index = stage <= 3 ? 0 : stage <= 7 ? 1 : stage <= 12 ? 2 : 3;
+          const monster = MONSTER_TYPES[index];
+          Object.assign(monsterObj, {
+            sprite: monster.sprite,
+            color: monster.color,
+            scale: isMobileLayout ? Math.min(monster.scale, 3) : monster.scale,
+            name: monster.name,
+          });
+        },
+
+        animateAttack(attacker, target, onHit, isHeroAttacking) {
+          const originalX = attacker.x;
+          const originalY = attacker.y;
+          
+          // Direction depends on layout
+          let directionX, directionY;
+          if (isMobileLayout) {
+            // Vertical layout: hero moves up, monster moves down
+            directionX = 0;
+            directionY = isHeroAttacking ? -1 : 1;
+          } else {
+            // Horizontal layout: hero moves right, monster moves left
+            directionX = isHeroAttacking ? 1 : -1;
+            directionY = 0;
+          }
+          
+          let step = 0;
+
+          const anim = setInterval(() => {
+            step++;
+
+            // Anticipation phase
+            if (step < 5) {
+              attacker.x -= 3 * directionX;
+              attacker.y -= 3 * directionY;
+              attacker.x += Math.sin(step * 0.5) * 2 * (directionY !== 0 ? 1 : 0);
+              attacker.y += Math.sin(step * 0.5) * 2 * (directionX !== 0 ? 1 : 0);
+            }
+            // Attack phase
+            else if (step < 12) {
+              attacker.x += 10 * directionX;
+              attacker.y += 10 * directionY;
+              attacker.x += Math.sin(step * 0.8) * 2 * (directionY !== 0 ? 1 : 0);
+              attacker.y += Math.sin(step * 0.8) * 2 * (directionX !== 0 ? 1 : 0);
+
+              // Create slash trail
+              if (step % 2 === 0) {
+                createSlashEffect(
+                  attacker.x + (directionX > 0 ? 40 : directionX < 0 ? -40 : 0),
+                  attacker.y + (directionY > 0 ? 40 : directionY < 0 ? -40 : 30),
+                  isHeroAttacking ? "#4ecdc4" : "#e74c3c"
+                );
+              }
+            }
+            // Impact
+            else if (step === 12) {
+              shakeStrength = criticalHit ? 15 : 8;
+
+              const hitX = target.x + (isMobileLayout ? 40 : (isHeroAttacking ? 60 : 20));
+              const hitY = target.y + (isMobileLayout ? (isHeroAttacking ? 60 : 20) : 40);
+
+              createExplosion(
+                hitX,
+                hitY,
+                isHeroAttacking ? "#fff" : "#e74c3c",
+                criticalHit
+              );
+
+              // Impact flash
+              ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              onHit();
+            }
+            // Return phase
+            else if (step < 22) {
+              attacker.x = attacker.x - (attacker.x - originalX) * 0.2;
+              attacker.y = attacker.y - (attacker.y - originalY) * 0.2;
+            }
+            // Finish
+            else {
+              attacker.x = originalX;
+              attacker.y = originalY;
+              clearInterval(anim);
+              criticalHit = false;
+            }
+          }, CONFIG.ANIMATION.SPEED);
+        },
+      };
+
+      function startBattle() {
+        if (player.hp <= 0) {
+          showToast(
+            "error",
+            "💀 You are defeated!",
+            "Rest first before fighting!"
+          );
+          return;
+        }
+
+        // Update canvas and positions for current screen size
+        setupCanvas();
+        updateBattlePositions();
+
+        uiLayer.style.display = "none";
+        battleLayer.style.display = "block";
+
+        heroObj.hp = player.hp;
+        heroObj.maxHp = player.maxHp;
+        heroObj.originalX = heroObj.x;
+        heroObj.originalY = heroObj.y;
+
+        const monsterLvl = player.stage;
+        monsterObj.maxHp = monsterLvl * 20;
+        monsterObj.hp = monsterObj.maxHp;
+        monsterObj.originalX = monsterObj.x;
+        monsterObj.originalY = monsterObj.y;
+
+        BattleSystem.selectMonster(player.stage);
+
+        msgBox.innerText = `⚔️ ${monsterObj.name} LV.${player.stage} Appears! ⚔️`;
+        battleState = "idle";
+
+        // Reset battle stats
+        comboCounter = 0;
+        battleStats.totalDamage = 0;
+        battleStats.hitsLanded = 0;
+        battleStats.criticalHits = 0;
+
+        // Update next stage display
+        Utils.updateElement("next-stage-txt", player.stage);
+
+        requestAnimationFrame(gameLoop);
+        setTimeout(playerTurn, 1000);
+      }
+
+      function playerTurn() {
+        if (battleState === "win" || battleState === "lose") return;
+
+        msgBox.innerText = "⚔️ Hero Attacks!";
+
+        // Calculate damage with critical hit chance
+        criticalHit = Math.random() < 0.25; // 25% crit chance
+        const baseDmg = player.str * 2 + Math.random() * 5;
+        const dmg = Math.floor(criticalHit ? baseDmg * 2 : baseDmg);
+
+        comboCounter++;
+        battleStats.hitsLanded++;
+        battleStats.totalDamage += dmg;
+        if (criticalHit) battleStats.criticalHits++;
+
+        BattleSystem.animateAttack(
+          heroObj,
+          monsterObj,
+          () => {
+            monsterObj.hp -= dmg;
+
+            const damageText = criticalHit ? `CRITICAL! ${dmg}` : `${dmg}`;
+            const textColor = criticalHit ? "#ffd700" : "#fff";
+            floatingTexts.push(
+              new FloatingText(
+                damageText,
+                monsterObj.x,
+                monsterObj.y,
+                textColor,
+                criticalHit
+              )
+            );
+
+            // Show combo
+            if (comboCounter > 1) {
+              const comboY = isMobileLayout ? canvas.height / 2 : 100;
+              floatingTexts.push(
+                new FloatingText(
+                  `${comboCounter} HIT COMBO!`,
+                  canvas.width / 2,
+                  comboY,
+                  "#ff6b9d",
+                  false
+                )
+              );
+            }
+
+            if (monsterObj.hp <= 0) {
+              winBattle();
+            } else {
+              setTimeout(enemyTurn, 800);
+            }
+          },
+          true
+        );
+      }
+
+      function enemyTurn() {
+        if (battleState === "win" || battleState === "lose") return;
+
+        msgBox.innerText = `💀 ${monsterObj.name} Attacks!`;
+        comboCounter = 0; // Reset combo on enemy turn
+
+        BattleSystem.animateAttack(
+          monsterObj,
+          heroObj,
+          () => {
+            const monsterDmg = player.stage * 10;
+            const def = player.agi * 1.5;
+            const dmg = Math.max(1, Math.floor(monsterDmg - def));
+
+            heroObj.hp -= dmg;
+            player.hp = heroObj.hp;
+            floatingTexts.push(
+              new FloatingText(
+                `-${dmg}`,
+                heroObj.x,
+                heroObj.y,
+                "#e74c3c",
+                false
+              )
+            );
+
+            if (heroObj.hp <= 0) {
+              loseBattle();
+            } else {
+              setTimeout(playerTurn, 800);
+            }
+          },
+          false
+        );
+      }
+
+      function winBattle() {
+        battleState = "win";
+        msgBox.innerText = "� CHALLENGE COMPLETE! 🌟";
+        msgBox.style.color = "#9dde8b";
+
+        // No EXP/Gold rewards - just challenge
+        player.stage++;
+
+        // Victory effects
+        for (let i = 0; i < 50; i++) {
+          setTimeout(() => {
+            createExplosion(
+              Math.random() * canvas.width,
+              (Math.random() * canvas.height) / 2,
+              ["#ffd700", "#ff6b9d", "#4ecdc4"][Math.floor(Math.random() * 3)],
+              false
+            );
+          }, i * 50);
+        }
+
+        // Check boss achievements
+        checkBossAchievements();
+        updateStats();
+
+        let victoryMsg = `💪 Total Damage: ${battleStats.totalDamage}\n`;
+        victoryMsg += `🎯 Hits Landed: ${battleStats.hitsLanded}\n`;
+        victoryMsg += `⚡ Critical Hits: ${battleStats.criticalHits}\n`;
+        victoryMsg += `🌟 Stage ${player.stage} Unlocked!`;
+
+        showToast("achievement", "🌟 CHALLENGE COMPLETE!", victoryMsg);
+        setTimeout(endBattle, 3000);
+      }
+
+      function loseBattle() {
+        battleState = "lose";
+        msgBox.innerText = "💀 DEFEATED... 💀";
+        msgBox.style.color = "#ff6b6b";
+        updateStats();
+        showToast("error", "💀 Defeated", "Train harder and try again!");
+        setTimeout(endBattle, 2000);
+      }
+
+      function endBattle() {
+        battleLayer.style.display = "none";
+        uiLayer.style.display = "flex";
+      }
+
+      function gameLoop() {
+        if (battleLayer.style.display === "none") return;
+
+        ctx.save();
+
+        // Screen shake effect
+        if (shakeStrength > 0) {
+          ctx.translate(
+            (Math.random() - 0.5) * shakeStrength,
+            (Math.random() - 0.5) * shakeStrength
+          );
+          shakeStrength *= CONFIG.ANIMATION.SHAKE_DECAY;
+          if (shakeStrength < 0.5) shakeStrength = 0;
+        }
+
+        // Draw animated background
+        drawBattleBackground();
+
+        frame++;
+
+        // Draw shadows first
+        drawShadow(heroObj);
+        if (monsterObj.hp > 0) drawShadow(monsterObj);
+
+        // Draw sprites with battle effects
+        ctx.save();
+        if (frame % 60 < 30) {
+          ctx.shadowColor = "#4ecdc4";
+          ctx.shadowBlur = 20;
+        }
+        drawSprite(ctx, SPRITE_HERO, heroObj, false);
+        ctx.restore();
+
+        if (monsterObj.hp > 0) {
+          ctx.save();
+          if (frame % 60 < 30) {
+            ctx.shadowColor = monsterObj.color;
+            ctx.shadowBlur = 20;
+          }
+          drawSprite(ctx, monsterObj.sprite, monsterObj, true);
+          ctx.restore();
+        }
+
+        // Draw battle effects
+        drawBattleEffects();
+
+        // Update and draw particles
+        particles = particles.filter((p) => {
+          p.update();
+          p.draw(ctx);
+          return p.life > 0;
+        });
+
+        // Update and draw floating texts
+        floatingTexts = floatingTexts.filter((t) => {
+          t.update();
+          t.draw(ctx);
+          return t.life > 0;
+        });
+
+        ctx.restore();
+        requestAnimationFrame(gameLoop);
+      }
+
+      function drawBattleBackground() {
+        // Animated gradient background
+        backgroundOffset += 0.5;
+
+        const gradient1 = ctx.createLinearGradient(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+        gradient1.addColorStop(0, "#1a1a2e");
+        gradient1.addColorStop(
+          0.5 + Math.sin(backgroundOffset * 0.01) * 0.2,
+          "#16213e"
+        );
+        gradient1.addColorStop(1, "#0f3460");
+        ctx.fillStyle = gradient1;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Moving stars
+        for (let i = 0; i < 50; i++) {
+          const x = (i * 137.5 + backgroundOffset) % canvas.width;
+          const y = (i * 73) % canvas.height;
+          const brightness = Math.sin(frame * 0.05 + i) * 0.5 + 0.5;
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${brightness * 0.5})`;
+          ctx.beginPath();
+          ctx.arc(x, y, 1 + brightness, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Ground with gradient - adjust for mobile
+        const groundY = isMobileLayout ? canvas.height - 100 : 300;
+        const groundGradient = ctx.createLinearGradient(
+          0,
+          groundY,
+          0,
+          canvas.height
+        );
+        groundGradient.addColorStop(0, "rgba(45, 55, 72, 0.8)");
+        groundGradient.addColorStop(1, "rgba(26, 32, 44, 1)");
+        ctx.fillStyle = groundGradient;
+        ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+        // Ground line
+        ctx.strokeStyle = "#4ecdc4";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 10]);
+        ctx.lineDashOffset = -backgroundOffset;
+        ctx.beginPath();
+        ctx.moveTo(0, groundY);
+        ctx.lineTo(canvas.width, groundY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function drawShadow(obj) {
+        const sprite = obj === heroObj ? SPRITE_HERO : obj.sprite;
+        const gradient = ctx.createRadialGradient(
+          obj.x + (sprite[0].length * obj.scale) / 2,
+          obj.y + sprite.length * obj.scale + 8,
+          0,
+          obj.x + (sprite[0].length * obj.scale) / 2,
+          obj.y + sprite.length * obj.scale + 8,
+          sprite[0].length * obj.scale * 0.6
+        );
+        gradient.addColorStop(0, "rgba(0,0,0,0.5)");
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        const shadowWidth = sprite[0].length * obj.scale * 0.8;
+        const centerX = obj.x + (sprite[0].length * obj.scale) / 2;
+        ctx.ellipse(
+          centerX,
+          obj.y + sprite.length * obj.scale + 8,
+          shadowWidth / 2,
+          8,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+
+      function drawBattleEffects() {
+        // Energy aura for low HP
+        if (heroObj.hp / heroObj.maxHp < 0.3) {
+          ctx.save();
+          ctx.globalAlpha = 0.3 + Math.sin(frame * 0.1) * 0.2;
+          ctx.fillStyle = "#e74c3c";
+          ctx.shadowColor = "#e74c3c";
+          ctx.shadowBlur = 30;
+          ctx.beginPath();
+          ctx.arc(heroObj.x + 50, heroObj.y + 50, 60, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if (monsterObj.hp > 0 && monsterObj.hp / monsterObj.maxHp < 0.3) {
+          ctx.save();
+          ctx.globalAlpha = 0.3 + Math.sin(frame * 0.1) * 0.2;
+          ctx.fillStyle = "#9b59b6";
+          ctx.shadowColor = "#9b59b6";
+          ctx.shadowBlur = 30;
+          ctx.beginPath();
+          ctx.arc(monsterObj.x + 50, monsterObj.y + 50, 80, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // Initialize game on load
+      window.addEventListener("load", async () => {
+        console.log("Game initializing...");
+        
+        // Show loading state
+        document.getElementById("lvl-txt").innerText = "...";
+        document.getElementById("gold-txt").innerText = "...";
+        
+        // Wait for Firebase SDK to be ready
+        let retries = 0;
+        while (!window.firebase && retries < 20) {
+          await new Promise(r => setTimeout(r, 100));
+          retries++;
+        }
+        
+        await FirebaseService.init();
+        const loaded = await FirebaseService.loadPlayerSnapshot();
+        
+        if (loaded) {
+          console.log("Player data loaded from Firebase");
+        } else {
+          console.log("Using default player data");
+        }
+        
+        Utils.checkStreak();
+        
+        // Mark game as ready BEFORE updateStats to allow saving
+        gameReady = true;
+        
+        updateStats();
+        updateRestButtons();
+        restoreCollapsedSections();
+        
+        console.log("Game ready!");
+      });
+    </script>
+  </body>
+</html>
